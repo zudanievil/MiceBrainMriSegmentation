@@ -1,0 +1,252 @@
+global:
+  file_naming_convention: '{group}_{hour}_{animal}_{frame}'
+  frame_shapes:  # axes order is height, width (uv-coordinates convention)
+    f1:
+      - 80
+      - 100
+    f10:
+      - 80
+      - 120
+    f11:
+      - 70
+      - 120
+    f12:
+      - 70
+      - 100
+    f13:
+      - 70
+      - 100
+    f14:
+      - 60
+      - 80
+    f15:
+      - 40
+      - 50
+    f16:
+      - 40
+      - 50
+    f17:
+      - 40
+      - 50
+    f18:
+      - 30
+      - 50
+    f19:
+      - 15
+      - 30
+    f2:
+      - 80
+      - 100
+    f3:
+      - 80
+      - 120
+    f4:
+      - 80
+      - 120
+    f5:
+      - 80
+      - 120
+    f6:
+      - 80
+      - 130
+    f7:
+      - 80
+      - 130
+    f8:
+      - 80
+      - 130
+    f9:
+      - 80
+      - 130
+
+project_ops:
+  masks_subfolders:
+    - svgs
+    - onts
+  project_subfolders:
+    - img
+    - img_raw
+    - img_cropped
+    - meta
+    - segm
+  atlas_api_help: http://help.brain-map.org/display/atlasviewer/Allen+Reference+Atlas+Viewer
+  download_slice_ids: http://api.brain-map.org/api/v2/data/query.xml?criteria=model::AtlasImage,rma::criteria,[annotated$eqtrue],atlas_data_set(atlases[id$eq{atlas}]),rma::options[order$eq%27sub_images.section_number%27][num_rows$eqall]
+  download_svg: http://api.brain-map.org/api/v2/svg_download/{id}?groups={groups}
+  download_ontology: http://api.brain-map.org/api/v2/structure_graph_download/{atlas}.xml
+  svg_names_and_ids: {}
+  atlas_id: 1
+  atlas_first_slice_coord: -7.905
+  atlas_last_slice_coord: 5.345
+  atlas_svg_groups:
+  - 28
+  metadata_keys:
+    rotation:
+      dtype: 'float'
+      selector:
+        - 0
+    reference:
+      dtype: 'float'
+      selector:
+        - 0
+    lbbox:
+      dtype: 'int'
+      selector:  # asserts u_min, u_max, v_min, v_max order (in uv-coordinate system)
+        - 1
+        - 5
+        - 0
+        - 4
+    rbbox:
+      dtype: 'int'
+      selector:
+        - 1
+        - 5
+        - 0
+        - 4
+    refzone:
+      dtype: 'float'
+      selector:
+        - 1
+        - 0
+        - 3
+        - 2
+        - 5
+        - 4
+        - 7
+        - 6
+
+
+transform_utils:
+  resize_kw:
+    anti_aliasing: false
+    order: 3
+    preserve_range: true
+  rotate_kw:
+    order: 3
+    preserve_range: true
+pattern_utils: {}
+
+segmentation_by_atlas:
+  compare_by:  # only one entry
+    - hour
+  reference_value: 0  # for compare_by
+  match_by: # any number of entries
+    - frame
+  batch_by: # only one entry
+    - animal
+  pval_thresholds:
+    - 1
+    - 0.05
+    - 0.01
+  zero_mask_left_side: true
+  flip_structure_mask_horizontally: true
+  make_mask_left_side_as_right: false
+  drop_columns_from_summary:
+    - lbbox
+    - rbbox
+    - refzone
+    - rotation
+  segm.ttest_kw:
+    'axis': 0
+    'equal_var': false
+  segm.gauss_filt_kw:
+    sigma: 1
+    preserve_range: True
+    truncate: 2
+  segm.subplots_kw:
+    figsize:
+      - 10
+      - 5
+  segm.plot_title: '0h vs {hour}, group: {group}, frame: {frame}\np-value and mean relative intensity'
+  segm.plot_title_kw:
+    fontsize: 18
+  segm.plot_path: '{filename} {frame} at {hour}h.png'
+  segm.colorbar_kw:
+    fraction: 0.045
+  segm.contour_kw:
+    colors: '#cc0000'
+    levels: 0
+    linewidths: 0.6
+  segm.savefig_kw:
+    dpi: 96
+    format: png
+    transparent: false
+
+ontology:
+  mask_threshold: 127
+  min_mask_size: 8
+  save_mask_imgs: true
+  include_substructures: true
+  svg_crop_id: 'bbox'
+  inkscape_version: '1.0.1 (3bc2e813f5, 2020-09-07)'
+  inkscape_exe: 'C:/Program Files/Inkscape/bin/inkscape'
+  rendering_cmd: '"{inkscape}" --export-id={export_id} --export-filename="{dst_path}" --export-background-opacity=1.0 --export-height={height} --export-width={width} "{src_path}"'
+  allowed_svg_tag_tails:
+  - svg
+  - g
+  - metadata
+  - namedview
+  - RDF
+  - Work
+  - format
+  - type
+  - defs
+
+summary_plotting: #TODO: merge
+  column_drop_list:
+  - animals
+  - reference
+  - is_ref
+  column_renamer:
+    mean (p <0.01): m2
+    mean (p <0.05): m1
+    mean (p <1): m0
+    n px (p <0.01): n2
+    n px (p <0.05): n1
+    n px (p <1): n0
+    std (p <0.01): s2
+    std (p <0.05): s1
+    std (p <1): s0
+  figsize:
+  - 6
+  - 12
+  parse_kwargs:
+    index_col: false
+  plot_fontsize: 15
+  plot_kwargs:
+  - alpha: 0.6
+    color: '#00008c'
+    elinewidth: 1
+    label: p <1
+    lw: 2
+    marker: o
+  - alpha: 0.8
+    color: '#000046'
+    elinewidth: 1
+    label: p <.5
+    lw: 2
+    marker: o
+  - alpha: 1.0
+    color: '#000000'
+    elinewidth: 1
+    label: p <.01
+    lw: 2
+    marker: o
+  read_csv_kwargs: {}
+  savefig_kwargs:
+    bbox_inches: tight
+    dpi: 96
+    format: png
+    transparent: false
+  title_fontsize: 20
+  xlim:
+  - 0
+  - 170
+  xticks:
+  - 3
+  - 6
+  - 9
+  - 12
+  - 24
+  - 48
+  - 96
+  - 168

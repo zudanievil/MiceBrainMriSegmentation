@@ -1,0 +1,21 @@
+name: brainS
+channels:
+  - conda-forge
+  - anaconda
+  - defaults
+dependencies:
+  - python=3.7
+  - yaml
+  - pathlib
+  - ipython=7.17.*
+  - jupyter=1.0.*
+  - pillow=7.2.*
+  - numpy=1.18.*
+  - pandas=1.0.*
+  - matplotlib=3.2.*
+  - scikit-image=0.16.*
+  - pytorch=1.6.*
+  - opencv=3.4.*
+  - pip=20.1.*
+  - pip:
+    - scipy==1.4.1
