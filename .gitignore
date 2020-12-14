@@ -2,6 +2,5 @@
 **/__pycache__
 # local scripts:
 **/ignore_*
-# other stuff
+# pycharm config
 .idea
-active branch pointer
