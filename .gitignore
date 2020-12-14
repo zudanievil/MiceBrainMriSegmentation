@@ -1,0 +1,6 @@
+#python cache:
+**/__pycache__
+# local scripts:
+**/ignore_*
+# pycharm config
+.idea
