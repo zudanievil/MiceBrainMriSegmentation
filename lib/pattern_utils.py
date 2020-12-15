@@ -3,6 +3,7 @@ utility functions for text and binary processing
 """
 import re
 import struct
+import pathlib
 
 _LOC = dict()
 _GLOB = dict()
@@ -13,6 +14,16 @@ def fstring_to_regex(fstring: str) -> re.Pattern:
     chunks = [f'(?P<{c}>.+?)' if i % 2 == 1 else c for i, c in enumerate(chunks)]
     regex = '\\b' + ''.join(chunks) + '\\b'
     return re.compile(regex)
+
+
+def find_file(fname_start: str, folder: pathlib.Path) -> pathlib.Path:  # TODO: rewrite for fname_regex
+    for p in folder.iterdir():
+        if p.is_dir():
+            result = find_file(fname_start, p)
+            if result:
+                return result
+        if p.is_file() and p.name.startswith(fname_start):
+            return p
 
 
 def nifti_struct() -> struct.Struct:  # TODO: rewrite into smth humanly readable

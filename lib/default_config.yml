@@ -170,6 +170,33 @@ segmentation_by_atlas:
     dpi: 96
     format: png
     transparent: false
+  summary.figsize:
+  - 12
+  - 6
+  summary.plot_kw:
+  - alpha: 0.6
+    color: '#00008c'
+    elinewidth: 1
+    label: p <1
+    lw: 2
+    marker: o
+  - alpha: 0.8
+    color: '#000046'
+    elinewidth: 1
+    label: p <.5
+    lw: 2
+    marker: o
+  - alpha: 1.0
+    color: '#000000'
+    elinewidth: 1
+    label: p <.01
+    lw: 2
+    marker: o
+  summary.savefig_kw:
+    bbox_inches: tight
+    dpi: 96
+    format: png
+    transparent: false
 
 ontology:
   mask_threshold: 127
@@ -190,63 +217,3 @@ ontology:
   - format
   - type
   - defs
-
-summary_plotting: #TODO: merge
-  column_drop_list:
-  - animals
-  - reference
-  - is_ref
-  column_renamer:
-    mean (p <0.01): m2
-    mean (p <0.05): m1
-    mean (p <1): m0
-    n px (p <0.01): n2
-    n px (p <0.05): n1
-    n px (p <1): n0
-    std (p <0.01): s2
-    std (p <0.05): s1
-    std (p <1): s0
-  figsize:
-  - 6
-  - 12
-  parse_kwargs:
-    index_col: false
-  plot_fontsize: 15
-  plot_kwargs:
-  - alpha: 0.6
-    color: '#00008c'
-    elinewidth: 1
-    label: p <1
-    lw: 2
-    marker: o
-  - alpha: 0.8
-    color: '#000046'
-    elinewidth: 1
-    label: p <.5
-    lw: 2
-    marker: o
-  - alpha: 1.0
-    color: '#000000'
-    elinewidth: 1
-    label: p <.01
-    lw: 2
-    marker: o
-  read_csv_kwargs: {}
-  savefig_kwargs:
-    bbox_inches: tight
-    dpi: 96
-    format: png
-    transparent: false
-  title_fontsize: 20
-  xlim:
-  - 0
-  - 170
-  xticks:
-  - 3
-  - 6
-  - 9
-  - 12
-  - 24
-  - 48
-  - 96
-  - 168

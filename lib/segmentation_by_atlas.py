@@ -17,6 +17,7 @@ _IMPORTS_THAT_NEED_CONFIG = (pattern_utils, ontology)
 
 File = type(None)  # type alias. means function writes result to files
 
+
 class find_batches_for_segmentation:
     """
     static class that represents calculation.
@@ -295,13 +296,56 @@ class collect_segmentation_results:
         t.to_csv(project / result_file_name, sep='\t')
 
 
-def plot_segmentation_results(project, result_file_name: str = 'results.txt') -> File:
-    raise NotImplementedError  # TODO
+class plot_segmentation_results:
+    @staticmethod
+    def call(project: pathlib.Path, refactored_result_path: pathlib.Path,
+             save_plots_with_segmentation_images: bool = True) -> File:
+        save_folder = project / 'segm'
+        cls = plot_segmentation_results
+        t = pd.read_csv(refactored_result_path, sep='\t')
+        structures = np.unique(t.index.get_level_values('structure'))
+        for structure in structures:
+            structure = structure.replace('/', '_')
+            if save_plots_with_segmentation_images:
+                save_path = pattern_utils.find_file(structure, save_folder).parent
+            else:
+                save_path = save_folder
+            save_path /= (structure + ' plot.png')
+            cls.plot_mean_std(t.loc[structure], save_path)
+
+    @staticmethod
+    def plot_mean_std(data: pd.DataFrame, save_path) -> File:
+        fig, axs = plt.subplots(1, 1, figsize=_LOC['summary.figsize'])
+        for i, t in enumerate(_LOC['pval_thresholds']):
+            axs.errorbar(data.index - 0.3 * i, data[f'mean (p <{t})'], yerr=data[f'std (p <{t})'],
+                         **_LOC['summary.plot_kw'][i])
+        axs.set_xticks(data.index)
+        fig.savefig(save_path, **_LOC['summary.savefig_kw'])
+        plt.close(fig)
 
 
-def cleanup(project: pathlib.Path, folders: 'tuple[str]' = ('.segmentation_temp',)) -> None:
-    for folder in folders:
-        d = project / folder
-        for f in d.iterdir():
-            f.unlink()
-        d.rmdir()
+def refactor_summary(load_path, save_path) -> File:
+    table = pd.read_csv(load_path, sep='\t')
+    compare_by = _LOC['compare_by'][0]
+    mean_cols = table.columns[[c.startswith('mean') for c in table.columns]].to_list()
+    std_cols = table.columns[[c.startswith('std') for c in table.columns]].to_list()
+    px_cols = table.columns[[c.startswith('px') for c in table.columns]].to_list()
+    plot_cols = ['structure', compare_by] + mean_cols + std_cols + px_cols
+    table = table[plot_cols]
+    try:
+        table.loc[:, compare_by] = table.loc[:, compare_by].astype(float)
+    except ValueError:
+        pass
+    for t in _LOC['pval_thresholds']:
+        table[f'nm {t}'] = table[f'px (p <{t})'] * table[f'mean (p <{t})']
+        table[f'nmm {t}'] = table[f'px (p <{t})'] * table[f'mean (p <{t})'] ** 2
+        table[f'nss {t}'] = table[f'px (p <{t})'] * table[f'std (p <{t})'] ** 2
+    table = table.groupby(['structure', compare_by, ]).sum(min_count=1)
+    table2 = pd.DataFrame()
+    for t in _LOC['pval_thresholds']:
+        table2[f'mean (p <{t})'] = table[f'nm {t}'] / table[f'px (p <{t})']
+        table[f'Ess {t}'] = (table[f'nss {t}'] + table[f'nmm {t}']) \
+            / table[f'px (p <{t})'] - table2[f'mean (p <{t})'] ** 2
+        table2[f'std (p <{t})'] = np.sqrt(table[f'Ess {t}'])
+        table2[f'px (p <{t})'] = table[f'px (p <{t})']
+    table2.to_csv(save_path, sep='\t')
