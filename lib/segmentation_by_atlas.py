@@ -302,12 +302,12 @@ def plot_segmentation_results(project: pathlib.Path, refactored_result_path: pat
     table = pd.read_csv(refactored_result_path, sep='\t', index_col=['structure', _LOC['compare_by'][0]])
     structures = np.unique(table.index.get_level_values('structure'))
     for structure in structures:
-        structure = structure.replace('/', '_')
+        save_name = structure.replace('/', '_')
         if save_plots_with_segmentation_images:
-            save_path = pattern_utils.find_file(structure, save_folder).parent
+            save_path = pattern_utils.find_file(save_name, save_folder).parent
         else:
             save_path = save_folder
-        save_path /= (structure + ' plot.png')
+        save_path /= (save_name + ' plot.png')
 
         data = table.loc[structure]
         fig, axs = plt.subplots(1, 1, figsize=_LOC['summary.figsize'])
