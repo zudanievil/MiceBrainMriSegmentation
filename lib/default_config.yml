@@ -68,6 +68,7 @@ project_ops:
     - img_raw
     - img_cropped
     - meta
+    - pre_meta
     - segm
   atlas_api_help: http://help.brain-map.org/display/atlasviewer/Allen+Reference+Atlas+Viewer
   download_slice_ids: http://api.brain-map.org/api/v2/data/query.xml?criteria=model::AtlasImage,rma::criteria,[annotated$eqtrue],atlas_data_set(atlases[id$eq{atlas}]),rma::options[order$eq%27sub_images.section_number%27][num_rows$eqall]
@@ -114,7 +115,6 @@ project_ops:
         - 7
         - 6
 
-
 transform_utils:
   resize_kw:
     anti_aliasing: false
@@ -123,6 +123,7 @@ transform_utils:
   rotate_kw:
     order: 3
     preserve_range: true
+
 pattern_utils: {}
 
 segmentation_by_atlas:
