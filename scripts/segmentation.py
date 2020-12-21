@@ -2,9 +2,10 @@
 
 """
 calculate statistics over masks (left half of the brain)
-can run in parallel with anoter such process,
-because it only reads shared data (brain structure masks)
+can run in parallel with other such process,
+because it only reads shared data (ontology and brain structure masks)
 """
+
 if __name__ == '__main__':
     import sys
     import pathlib

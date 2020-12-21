@@ -2,5 +2,6 @@
 **/__pycache__
 # local scripts:
 **/ignore_*
+**/local_*
 # pycharm config
 .idea
