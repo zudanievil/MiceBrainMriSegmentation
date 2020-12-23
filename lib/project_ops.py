@@ -25,19 +25,31 @@ def new_masks_folder(folder: pathlib.Path) -> None:
     folder.mkdir(exist_ok=False)
     for subfolder in _LOC['masks_subfolders']:
         (folder / subfolder).mkdir()
+    masks_info = _LOC['default_download_info']
+    with (folder / 'download_info.yml').open('wt') as f:
+        yaml.safe_dump(masks_info, f)
 
-    default_ont_path = folder / 'onts' / 'default.xml'
-    url = _LOC['download_ontology'].format(atlas=_LOC['atlas_id'])
+
+def download_default_ontology(masks_folder: pathlib.Path) -> None:
+    default_ont_path = masks_folder / 'onts' / 'default.xml'
+    with (masks_folder / 'download_info.yml').open('rt') as f:
+        download_info = yaml.safe_load(f.read())
+    url = _LOC['download_ontology'].format(atlas_id=download_info['atlas_id'])
     urllib.request.urlretrieve(url, str(default_ont_path))
     _refactor_ontology(str(default_ont_path), str(default_ont_path))
-    if not _LOC['svg_names_and_ids']:
-        print('"svg_names_and_ids" config var is empty. no svg downloaded')
-    for svg_name in _LOC['svg_names_and_ids']:
-        svg_path = (folder / 'svgs' / svg_name).with_suffix('.svg')
-        svg_id = _LOC['svg_names_and_ids'][svg_name]
-        url = _LOC['download_svg'].format(id=svg_id, groups=_LOC['svg_groups'])
+
+
+def download_slice_svgs(masks_folder: pathlib.Path) -> None:
+    with (masks_folder / 'download_info.yml').open('rt') as f:
+        download_info = yaml.safe_load(f.read())
+    if not download_info['svg_names_and_ids']:
+        print(f'"svg_names_and_ids" key in {masks_folder.as_posix()}/download_info.yml has no value. no svg downloaded')
+    for svg_name in download_info['svg_names_and_ids']:
+        svg_path = masks_folder / 'svgs' / (svg_name + '.svg')
+        svg_id = download_info['svg_names_and_ids'][svg_name]
+        url = _LOC['download_svg'].format(svg_id=svg_id, svg_groups=download_info['atlas_svg_groups'])
         urllib.request.urlretrieve(url, str(svg_path))
-        print(f'atlas: {_LOC["atlas_id"]} slice: {svg_id} saved to: {svg_path}')
+        print(f'atlas: {download_info["atlas_id"]} slice: {svg_id} saved to: {svg_path}')
 
 
 def _refactor_ontology(load: pathlib.Path, save: pathlib.Path, skip: tuple = ()) -> None:
@@ -69,12 +81,14 @@ def _refactor_ontology(load: pathlib.Path, save: pathlib.Path, skip: tuple = ())
     et.ElementTree(new_rt[0]).write(save, encoding='utf8')
 
 
-def fetch_slice_ids_table(save_path: pathlib.Path) -> None:
+def download_slice_ids_table(masks_folder: pathlib.Path) -> None:
     import pandas as pd
     import numpy as np
     import xml.etree.ElementTree as et
-    save_path = save_path.with_suffix('.txt')
-    url = _LOC['download_slice_ids'].format(atlas=_LOC['atlas_id'])
+    save_path = masks_folder / 'slice_id_table.txt'
+    with (masks_folder / 'download_info.yml').open('rt') as f:
+        download_info = yaml.safe_load(f.read())
+    url = _LOC['download_slice_ids'].format(atlas_id=download_info['atlas_id'])
     urllib.request.urlretrieve(url, save_path)
     rt = et.parse(save_path, parser=et.XMLParser(encoding='utf-8'))
     rt = rt.getroot()
@@ -83,7 +97,8 @@ def fetch_slice_ids_table(save_path: pathlib.Path) -> None:
         slice_ids.append(int(node.text))
     slice_ids.reverse()
     slice_ids = np.array(slice_ids)
-    coords = np.linspace(_LOC['atlas_first_slice_coord'], _LOC['atlas_last_slice_coord'], len(slice_ids))
+    coords = np.linspace(download_info['atlas_first_slice_coord'],
+                         download_info['atlas_last_slice_coord'], len(slice_ids))
     t = pd.DataFrame()
     t['ids'] = slice_ids
     t['coo'] = coords

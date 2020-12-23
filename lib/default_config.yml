@@ -71,15 +71,19 @@ project_ops:
     - pre_meta
     - segm
   atlas_api_help: http://help.brain-map.org/display/atlasviewer/Allen+Reference+Atlas+Viewer
-  download_slice_ids: http://api.brain-map.org/api/v2/data/query.xml?criteria=model::AtlasImage,rma::criteria,[annotated$eqtrue],atlas_data_set(atlases[id$eq{atlas}]),rma::options[order$eq%27sub_images.section_number%27][num_rows$eqall]
-  download_svg: http://api.brain-map.org/api/v2/svg_download/{id}?groups={groups}
-  download_ontology: http://api.brain-map.org/api/v2/structure_graph_download/{atlas}.xml
-  svg_names_and_ids: {}
-  atlas_id: 1
-  atlas_first_slice_coord: -7.905
-  atlas_last_slice_coord: 5.345
-  atlas_svg_groups:
-  - 28
+  download_slice_ids: http://api.brain-map.org/api/v2/data/query.xml?criteria=model::AtlasImage,rma::criteria,[annotated$eqtrue],atlas_data_set(atlases[id$eq{atlas_id}]),rma::options[order$eq%27sub_images.section_number%27][num_rows$eqall]
+  download_svg: http://api.brain-map.org/api/v2/svg_download/{svg_id}?groups={svg_groups}
+  download_ontology: http://api.brain-map.org/api/v2/structure_graph_download/{atlas_id}.xml
+  default_download_info:
+    atlas_id: 1
+    atlas_first_slice_coord: -7.905
+    atlas_last_slice_coord: 5.345
+    atlas_svg_groups:
+    - 28
+    svg_names_and_ids:
+      AP_minus_7p9: 100960098
+      AP_zero: 100960309
+      AP_plus_4p0: 100960468
   metadata_keys:
     rotation:
       dtype: 'float'
