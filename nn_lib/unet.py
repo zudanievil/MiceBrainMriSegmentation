@@ -36,7 +36,7 @@ class Unet(nn.Module):
         self._decoder3 = self._block(ch * 8, ch * 4, name="dec3")
         self._decoder2 = self._block(ch * 4, ch * 2, name="dec2")
         self._decoder1 = self._block(ch * 2, ch, name="dec1")
-        self._conv = nn.Conv2d(in_channels=ch, out_channels=out_channels, kernel_size=1)
+        self._conv = nn.Conv2d(in_channels=ch, out_channels=out_channels+1, kernel_size=1)
 
     def forward(self, x):
         enc1 = self._encoder1(x)
@@ -56,7 +56,7 @@ class Unet(nn.Module):
         dec1 = self._upconv1(dec2)
         dec1 = torch.cat((dec1, enc1), dim=1)
         dec1 = self._decoder1(dec1)
-        return torch.sigmoid(self._conv(dec1))
+        return torch.softmax(self._conv(dec1), dim=1)[:, 0:-1]  # last channel is zero label
 
     @staticmethod
     def _block(in_channels, features, name):

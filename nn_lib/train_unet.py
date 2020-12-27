@@ -1,15 +1,20 @@
+#! /usr/bin/env python3
+
+import sys
 import datetime
 import pathlib
-from lib import unet
+
 import torch
+
+sys.path.append('.')
+import unet
 
 if __name__ == '__main__':
     # change this before training
-    dataset_folder = pathlib.Path('c:/users/user/desktop/new_segm/unet_data')
-    from_checkpoint = 'unet_main_11.pth'
+    dataset_folder = pathlib.Path('/home/admin_user/documents/lab/unet_dataset')
     save_name_stencil = 'unet_{branch}_{epoch}.pth'
-    branch = 'main'
-    epochs = range(7, 20)
+    branch = 'softmax'
+    epoch = 12
 
     # details
     num_workers = 3
@@ -17,7 +22,7 @@ if __name__ == '__main__':
     learning_rate = 0.002
     sgd_momentum = 0.9
 
-    # preparing loaders
+    # preparing loaders # todo: to function 'loader'
     loaders = {'train': None, 'test': None}
     tform = unet.RandomTransformWrapper()
     for mode in ('train', 'test'):
@@ -28,7 +33,7 @@ if __name__ == '__main__':
     print(datetime.datetime.now(), 'loaders loaded')
 
     # load model and optimizer state
-    ckpt = torch.load(dataset_folder / from_checkpoint)
+    ckpt = torch.load(dataset_folder / save_name_stencil.format(branch=branch, epoch=epoch))
     model = unet.Unet(**ckpt['model_configuration'])
     model.load_state_dict(ckpt['model_state_dict'])
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=sgd_momentum)
@@ -37,7 +42,8 @@ if __name__ == '__main__':
     print(datetime.datetime.now(), 'checkpoint checked')
 
     # training loop
-    for epoch in epochs:
+    while True:
+        epoch += 1
         print(datetime.datetime.now(), f'epoch {epoch} start')
         losses = {'train': list(), 'test': list()}
         for mode in ('train', 'test'):
@@ -65,8 +71,6 @@ if __name__ == '__main__':
         save_path = dataset_folder / save_name_stencil.format(epoch=epoch, branch=branch)
         torch.save(ckpt, save_path)
         print(datetime.datetime.now(), 'checkpoint checked out')
-    print(datetime.datetime.now(), 'all done')
-
 
 
 # # inference
