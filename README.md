@@ -118,7 +118,8 @@ they should not be stored as a raw array, because python is not c++ and hard dri
 * tables are stored as csv files with `\t` (tabulation) as a delimiter.
 * python pickles (serializations of python objects) are stored as .pickle or .pth files.
 * dictionaries/lists should be stored as [.yml] or .xml text files.
-.yml files are preferable as they are more legible.
+.yml files are preferred as they are more legible.
+
 [`.npy`, `.npz` suffixes]: https://numpy.org/devdocs/reference/generated/numpy.lib.format.html
 [.yml]: https://en.wikipedia.org/wiki/YAML
 
