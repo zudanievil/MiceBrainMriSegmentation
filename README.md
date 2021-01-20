@@ -78,7 +78,7 @@ the functions, which names start with `download_` and which accept an explicit `
     > File `download_info.yml` is filled with exemplary data. If you do not comment out the `download_` functions from script,
     they will retrieve 3 slices from allen institute website (takes about 10s).
     It may help you to understand the usage pattern better.
-1. Edit `download_info.yml`. the keys to the atlas slice_ids will be used for naming corresponding files.
+1. Edit `download_info.yml`. the keys for the slice_ids will be used as corresponding file names.
 They must coincide with `frame` part of the mri scan file names.
     >The function `project_ops.download_slice_ids()` called in `scripts/new_masks_folder.py` retrieves 
     slice ids (which I failed to find a pattern in) and assigns them to a linear range of floating point numbers (coordinates),
