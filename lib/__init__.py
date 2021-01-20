@@ -1,7 +1,6 @@
 import pathlib
 import yaml
 
-__version__ = '1.0.0'
 __all__ = ['load_config']
 
 

@@ -14,6 +14,8 @@ default_config = {
         'remove_borders': 4,
     }
 """
+
+
 class SuperGlueNetwork(torch.nn.Module):
     def __init__(self, ):
         self.config = locals()
@@ -28,11 +30,12 @@ class SuperGlueNetwork(torch.nn.Module):
         matches = self._descriptor_matching(x1, x2)
         return matches
 
+
 class PointProposal(torch.nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        in_, c1, c2, c3, c4, c5, out= 1, 64, 64, 128, 128, 256, config['descriptor_dim']
+        in_, c1, c2, c3, c4, c5, out = 1, 64, 64, 128, 128, 256, config['descriptor_dim']
         conv_kw = {'kernel_size': 3, 'stride': 1, 'padding': 1}
         pc_kw = {'kernel_size': 1, 'stride': 1, 'padding': 0}
 
@@ -66,39 +69,55 @@ class PointProposal(torch.nn.Module):
         # score branch
         scores = self._relu(self._convPa(x))
         scores = self._convPb(scores)
-        scores = torch.nn.functional.softmax(scores, dim=1)[:, :-1]
+        scores = torch.nn.functional.sigmoid(scores, dim=1)[:, :-1]
+        # this was softmax, but i replaced it with sigmoid, because the images have small rank
         b, _, h, w = scores.shape
         scores = scores.permute(0, 2, 3, 1).reshape(b, h, w, 8, 8)
         scores = scores.permute(0, 1, 3, 2, 4).reshape(b, h * 8, w * 8)
-        scores = self.simple_nms(scores, radius=self.config['nms_radius'])
-        scores = self.top_k(scores, k=self.config['max_keypoints'])
+        scores = self.simple_nms(scores)
         scores = self.remove_borders(scores)
         # descriptor branch
         desc = self._relu(self._convDa(x))
         desc = self.convDb(desc)
         desc = torch.nn.functional.normalize(desc, p=2, dim=1)
-        uv, scores, desc = self.to_uv_list(scores, desc)
+        uv, scores, desc = self.topk_to_uv_list(scores, desc)
         return uv, scores, desc
 
-    def simple_nms(self, scores, radius):
-        raise NotImplementedError
+    def simple_nms(self, scores):
+        radius = self.config['nms_radius']
+        if radius < 0:
+            return scores
+        max_mask = torch.nn.functional.max_pool2d(scores, kernel_size=radius * 2 + 1, stride=1, padding=radius)
+        zeros = torch.zeros_like(scores)
+        scores = torch.where(max_mask == scores, scores, zeros)
+        # the original code contained iterative refining of the result
+        # but i concluded it has no significant effect, so i removed it
         return scores
 
     def remove_borders(self, scores):
-        raise NotImplementedError
+        if self.config['border_fraction'] <= 0:
+            return scores
+        b, c, h, w = scores.shape
+        hf = int(h*self.config['border_fraction'])
+        wf = int(h*self.config['border_fraction'])
+        scores = scores[..., hf:-hf, wf:-wf]
+        scores = torch.nn.functional.pad(scores, (wf, wf, hf, hf))
         return scores
 
-    def top_k(self, scores, k):
-        raise NotImplementedError
-        return scores
+    def topk_to_uv_list(self, scores, desc):
+        k =
+        b, _, h, w = scores.shape
+        uv = torch.stack(torch.meshgrid(torch.arange(h), torch.arange(w)), dim=-1)
+        uv = torch.stack([uv.reshape(h*w, 2)]*b, dim=0)
+        scores = scores.reshape(b, h*w)
+        desc = desc.permute((0, 2, 3, 1)).reshape(b, h*w, -1)
+        mask=scores.argsort(dim=1)
+        k = self.config['max_keypoints']
+        mask = mask[:, :k]
+        k = torch.stack([torch.arange(b)]*k, dim=-1).flatten()
 
-    def to_uv_list(self, scores, desc):
-        raise NotImplementedError
+
         return uv, scores, desc
-
-    @staticmethod
-    def _identity(*args):
-        return args
 
 
 class DescriptorMatching(torch.nn.Module):

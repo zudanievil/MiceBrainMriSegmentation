@@ -11,10 +11,10 @@ import unet
 
 if __name__ == '__main__':
     # change this before training
-    dataset_folder = pathlib.Path('/home/admin_user/documents/lab/unet_dataset')
+    dataset_folder = pathlib.Path('C:/Users/user/files/lab/unet_dataset')
     save_name_stencil = 'unet_{branch}_{epoch}.pth'
     branch = 'softmax'
-    epoch = 12
+    epoch = 31
 
     # details
     num_workers = 3
@@ -74,38 +74,38 @@ if __name__ == '__main__':
 
 
 # # inference
-# ds = 'test'
-# import pathlib
-# import torch
-# import numpy as np
-# from matplotlib import pyplot as plt, colors as colors
-# from lib import unet
-# dataset_folder = pathlib.Path('c:/users/user/desktop/new_segm/unet_data')
-# from_checkpoint = 'unet_main_12.pth'
-# tform = unet.RandomTransformWrapper()
-# ds = unet.FolderAsUnetDataset(dataset_folder / ds, transform=tform)
-# loader = torch.utils.data.dataloader.DataLoader(ds, shuffle=True)
-# loader_iter = loader.__iter__()
-# bnorm = colors.BoundaryNorm(np.arange(-0.5, 4, 1), ncolors=4)
-# ckpt = torch.load(dataset_folder / from_checkpoint)
-# model = unet.Unet(**ckpt['model_configuration'])
-# model.load_state_dict(ckpt['model_state_dict'])
-# loss_fn = torch.nn.MSELoss()
+# if __name__ == '__main__':
+    # import numpy as np
+    # from matplotlib import pyplot as plt, colors as colors
 
-# inp, gnd = loader_iter.__next__()
-# pred = model(inp)
-# loss = float(loss_fn(pred, gnd).detach().numpy())
-# inp = np.squeeze(inp.detach().numpy())
-# cls = np.array([1, 2], dtype = int).reshape(2,1,1)
-# gnd = np.sum((gnd.detach().numpy()[0]> 0.5)* cls, axis=0) #note that batch axis is already reduced
-# pred = np.sum((pred.detach().numpy()[0]> 0.5)* cls, axis=0)
-# fig, axs = plt.subplots(1,2, figsize = (12, 6))
-# axs = axs.flatten()
-# axs[0].imshow(inp, cmap='gray')
-# i = axs[0].imshow(gnd, cmap='Set1', alpha=0.5, norm=bnorm)
-# plt.colorbar(i, ax=axs[0], fraction=0.03)
-# axs[0].set_title('gnd')
-# axs[1].imshow(inp, cmap='gray')
-# i = axs[1].imshow(pred, cmap='Set1', alpha=0.5, norm=bnorm)
-# plt.colorbar(i, ax=axs[1], fraction=0.03)
-# axs[1].set_title(f'pred, loss: {loss}')
+    # ds = 'test'
+    # dataset_folder = pathlib.Path('C:/Users/user/files/lab/unet_dataset')
+    # from_checkpoint = 'unet_softmax_23.pth'
+    # #tform = unet.RandomTransformWrapper()
+    # tform = None
+    # ds = unet.FolderAsUnetDataset(dataset_folder / ds, transform=tform)
+    # loader = torch.utils.data.dataloader.DataLoader(ds, shuffle=True)
+    # bnorm = colors.BoundaryNorm(np.arange(-0.5, 3, 1), ncolors=3)
+    # ckpt = torch.load(dataset_folder / from_checkpoint)
+    # model = unet.Unet(**ckpt['model_configuration'])
+    # model.load_state_dict(ckpt['model_state_dict'])
+    # loss_fn = torch.nn.MSELoss()
+
+    # for inp, gnd in loader:
+        # pred = model(inp)
+        # loss = float(loss_fn(pred, gnd).detach().numpy())
+        # inp = np.squeeze(inp.detach().numpy())
+        # cls = np.array([1, 2], dtype=int).reshape(2, 1, 1)
+        # gnd = np.sum((gnd.detach().numpy()[0] > 0.5) * cls, axis=0)  # note that batch axis is already reduced
+        # pred = np.sum((pred.detach().numpy()[0] > 0.5) * cls, axis=0)
+        # fig, axs = plt.subplots(1, 2, figsize=(12, 6))
+        # axs = axs.flatten()
+        # axs[0].imshow(inp, cmap='gray')
+        # i = axs[0].imshow(gnd, cmap='Set2', alpha=0.7, norm=bnorm)
+        # plt.colorbar(i, ax=axs[0], fraction=0.03)
+        # axs[0].set_title('gnd')
+        # axs[1].imshow(inp, cmap='gray')
+        # i = axs[1].imshow(pred, cmap='Set2', alpha=0.7, norm=bnorm)
+        # plt.colorbar(i, ax=axs[1], fraction=0.03)
+        # axs[1].set_title(f'pred, loss: {loss}')
+        # plt.show()

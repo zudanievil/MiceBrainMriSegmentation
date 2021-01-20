@@ -94,7 +94,7 @@ class FolderAsUnetDataset(torch.utils.data.Dataset):
 
 
 class RandomTransformWrapper:
-    def __init__(self, max_rot_z: 'rads' = 1, max_scale: 'times-1' = 0.2,
+    def __init__(self, max_rot_z: 'rads' = 3, max_scale: 'times-1' = 0.2,
                  max_shear: 'side length fraction' = 0.1,
                  max_translation: 'side length fraction' = 0.2,
                  max_pan_xy: 'not more than 0.001 recommended' = 0.0005):
