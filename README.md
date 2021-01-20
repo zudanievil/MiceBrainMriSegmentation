@@ -20,6 +20,7 @@ so adaptation for your use case may require some serious editing.
 [install inkscape]: https://inkscape.org/
 [install ImageJ]: https://imagej.nih.gov/ij/download.html
 
+
 ---
 
 ## usage guidelines ##
@@ -74,20 +75,21 @@ also it outputs a huge sheet of text into stdout)
 `{masks_folder}/download_info.yml`. This file requires manual editing. It stores data that allows to retrieve
 data from the allen atlas website (URIs are stored in config, though). the download info file is an implicit argument for
 the functions, which names start with `download_` and which accept an explicit `masks_folder` argument.
-    > File `download_info.yml` is filled with example data. If you do not comment out the `download_` functions from script,
-    they will retrieve the example slices from allen institute website. This may take 10-20 seconds.
+    > File `download_info.yml` is filled with exemplary data. If you do not comment out the `download_` functions from script,
+    they will retrieve 3 slices from allen institute website (takes about 10s).
+    It may help you to understand the usage pattern better.
 1. Edit `download_info.yml`. the keys to the atlas slice_ids will be used for naming corresponding files.
 They must coincide with `frame` part of the mri scan file names.
     >The function `project_ops.download_slice_ids()` called in `scripts/new_masks_folder.py` retrieves 
-    slice ids (which i failed to find a pattern in) and assigns them to a linear range of floating point numbers (coordinates),
-    then outputs this into  a csv table named `{masks_folder}/slice_id_table.txt`. this can help to find slices you need.
+    slice ids (which I failed to find a pattern in) and assigns them to a linear range of floating point numbers (coordinates),
+    then outputs this into  a csv table named `{masks_folder}/slice_id_table.txt`. Hopefully, this will help people find slices quicker.
 1. Comment out the call of `project_ops.new_masks_folder()` function in `scripts/new_masks_folder.py`
 (raises exceptions if a folder exists). Execute scipt to retrieve needed atlas slices.
 1. Each atlas slice is saved to an `.svg` file, which needs a bit of manual editing (with Inkscape).
 In each file create a rectangle, that will delimit the part that will be rendered (it is easier to do this with rectangle,
 than with metadata editing). Open Inkscape xml-editing tool and give the rectangle an new xml attribute `structure_id`,
 with the `bbox` value.
-    > You can add various visible elements to `.svg` slices. those can be raster images, lines, polylines, etc.
+    > You can add various visible elements to `.svg` slices. Those can be raster images, lines, polylines, etc.
     On rendering, all the elements, but those without their own graphical representation and those, that have `structure_id`
     attribute, will be turned invisible (tags for elements with no representation are listed in config file).
     All colors will be set to black (background) and white (brain structure).
@@ -98,6 +100,7 @@ with the `bbox` value.
     discriminate against single qoutes for some reason).
 1. Execute `scripts/prerender_masks.py`. This takes 0.5-10 min per slice, depending on the element count.
 The resolution of the slices will be like one of the corresponding cropped images. 
+
 ---
 
 ## Core ideas ##
