@@ -1,4 +1,6 @@
 # Mice Brain Mri Segmentation #
+(actually, it can segment humans' scans as well. the repos' name is a bit stupid)
+
 ## Disclaimer ##
 This repo contains code for our lab personal use.
 Not only it lacks test code, but it was formed for a specific use, 
