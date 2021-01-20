@@ -102,9 +102,8 @@ The resolution of the slices will be like one of the corresponding cropped image
 
 ## Core ideas ##
 ### Files ###
-* OS filesystem is a good interface. It also allows to make manual editing, if needed.
+* OS filesystem is a good interface. It also allows for simple and fast manual editing, if needed.
 So we use files as the major input and output even if it is not really needed.
-* 
 * each lib function should preferably change/create only one file or folder inside project/masks folder,
 and read only from one (different) file/folder. 
 * Not using matching names means that config will contain a lot of unnecessary entries.
