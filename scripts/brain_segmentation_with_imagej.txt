@@ -30,7 +30,7 @@ function getName(i){
     }
 
 
-function open32bitImg(){
+function openImage(){
     path = image_source_folder + save_name;
     cmd = "open="+ path + " image=[32-bit Unsigned] width=256 height=256 little-endian";
     run("Raw...", cmd);
@@ -74,7 +74,7 @@ macro 'select working directory [p]'{
 macro 'initiate sequence[i]'{
     i = getPointer();
     getName(i);
-    open32bitImg();
+    openImage();
     setTool("rotrect");
     }
 
@@ -84,7 +84,7 @@ macro 'next in sequence[g]' {
     i = getPointer();
     i = i + 1;
     getName(i);
-    open32bitImg();
+    openImage();
     setPointer(i);
     setTool("rotrect");
     }
