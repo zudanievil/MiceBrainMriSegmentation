@@ -325,7 +325,7 @@ def plot_segmentation_results(project: pathlib.Path, refactored_result_path: pat
 def refactor_summary(load_path, save_path) -> File:
     table = pd.read_csv(load_path, sep='\t')
     compare_by = _LOC['compare_by'][0]
-    plot_cols = table.columns[[c.startswith('mean', 'std', 'px') for c in table.columns]].to_list()
+    plot_cols = table.columns[[c.startswith(('mean', 'std', 'px')) for c in table.columns]].to_list()
     plot_cols += ['structure', compare_by]
     table = table[plot_cols]
     try:
