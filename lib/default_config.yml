@@ -156,7 +156,7 @@ segmentation_by_atlas:
   segm.gauss_filt_kw:
     sigma: 1
     preserve_range: True
-    truncate: 2
+    truncate: 1
   segm.subplots_kw:
     figsize:
       - 10
