@@ -136,12 +136,23 @@ class segment_batches:
         return imgs, metas
 
     @staticmethod
-    def calc_pixwise_stats(imgs, metas) -> (np.ndarray, np.ndarray):
+    def calc_pixwise_difference_of_means(imgs, metas) -> np.ndarray:
+        is_ref = metas['is_ref']
+        mdif = imgs[~ is_ref].mean(axis=0) - imgs[is_ref].mean(axis=0)
+        return mdif
+
+    @staticmethod
+    def calc_pixwise_mean_of_difference(imgs, metas) -> np.ndarray:
+        is_ref = metas['is_ref']
+        mdif = (imgs[~ is_ref] - imgs[is_ref]).mean(axis=0)
+        return mdif
+
+    @staticmethod
+    def calculate_pixwise_pvalue(imgs, metas) -> np.ndarray:
         is_ref = metas['is_ref']
         tval, pval = scipy.stats.ttest_ind(imgs[~ is_ref], imgs[is_ref], **_LOC['segm.ttest_kw'])
         pval = 1 - skimage.filters.gaussian(1 - pval, **_LOC['segm.gauss_filt_kw'])
-        mdif = imgs[~ is_ref].mean(axis=0) - imgs[is_ref].mean(axis=0)
-        return pval, mdif
+        return pval
 
     @staticmethod
     def get_search_mask(shape: tuple) -> 'np.ndarray[bool]':  # TODO: implement control with _LOC
@@ -229,7 +240,8 @@ class segment_batches:
         for i, batch in enumerate(batches):
             print(datetime.datetime.now(), 'starting: ', list(batch))
             imgs, metas = cls.load_imgs_metas(project, batch, ref_mask)
-            pval, mdif = cls.calc_pixwise_stats(imgs, metas)
+            pval= cls.calculate_pixwise_pvalue(imgs, metas)
+            mdif = cls.calc_pixwise_mean_of_difference(imgs, metas)
             ont = cls.fetch_ontology(metas, masks_folder)
             stats = []
             for structure_mask, structure_info in ontology.masks_generator(ont):
