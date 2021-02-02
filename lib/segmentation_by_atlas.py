@@ -1,12 +1,12 @@
-import sys
-import pathlib
-import yaml
 import datetime
+import pathlib
+import sys
 
 import numpy as np
 import pandas as pd
 import scipy.stats
 import skimage.filters
+import yaml
 from matplotlib import colors, pyplot as plt
 
 from lib import pattern_utils, ontology
@@ -52,30 +52,18 @@ class find_batches_for_segmentation:
         return table
 
     @staticmethod
-    def batch(table: pd.DataFrame) -> (np.ndarray, np.ndarray):
-        table.reset_index(drop=True, inplace=True)
-        ref_mask = np.array(table.columns.get_level_values('is_reference')).astype(bool)
-        table = table.to_numpy(dtype=str)
-        return table, ref_mask
-
-    @staticmethod
     def call(project: pathlib.Path, subfolder: str = '.segmentation_temp') -> File:
         """
-        Auto-detects images for comparison.
-        Puts their names into a 2d numpy.ndarray of strings.
-        The last dimension of the array is a batch,
-        images within batch are compared against each other.
-        Also makes boolean numpy.ndarray,
-        that masks reference group images within each batch.
-        Writes into {project}/{subfolder}/batches.npz file with keys:
-        {"batches": np.ndarray[str], "is_reference": np.ndarray[bool]}
+        makes table where each row is filenames, compared against each other.
+        The columns' headers indicate whether image is from reference group.
+        Writes table into {project}/{subfolder}/batches.txt.
         """
         cls = find_batches_for_segmentation
         t = cls.table_of_images(project)
         t = cls.split_to_groups(t)
-        batches, ref_mask = cls.batch(t)
-        save_path = project / subfolder / 'batches.npz'
-        np.savez(save_path, **{'batches': batches, 'is_reference': ref_mask})
+        t.reset_index(drop=True, inplace=True)
+        save_path = project / subfolder / 'batches.txt'
+        t.to_csv(save_path, sep='\t', na_rep='NA', index=False)
 
 
 def load_image_batch(project, batch: np.ndarray) -> np.ndarray:
@@ -114,16 +102,14 @@ class segment_batches:
 
     @staticmethod
     def read_batches(folder: pathlib.Path, batch_range: slice = None) -> (np.ndarray, np.ndarray):
-        cls = segment_batches
-        batches_zip = np.load(folder / 'batches.npz')
-        batches, ref_mask = batches_zip['batches'], batches_zip['is_reference']
-        batch_ordinals = list(range(len(batches)))
+        batches = pd.read_csv(folder / 'batches.txt', sep='\t', na_values='NA', header=[0, 1])
         if batch_range:
-            batches = batches[batch_range]
-            batch_ordinals = batch_ordinals[batch_range]
-        for o in batch_ordinals:
-            if (folder / f'{o}.pickle').exists():
+            batches = batches.iloc[batch_range]
+        for i in batches.index.to_list():
+            if (folder / f'{i}.pickle').exists():
                 raise AssertionError(f'{folder} should not contain pickles for specified batches')
+        ref_mask = np.array(batches.columns.get_level_values(0)) == 'True'
+        batches = batches.to_numpy(dtype=str)
         return batches, ref_mask
 
     @staticmethod
