@@ -219,7 +219,7 @@ class segment_batches:
         """
         reads batches from {project}/specs/segm/{spec_name}/batches.txt
         :param save_intersection_images: saves renders of image comparison results
-        with brain structure mask overlayed to the {project}/result_{spec_name}/segm
+        with brain structure mask overlayed to the {project}/results/{spec_name}/segm
         :param mask_permutation: callable that is applied to structure mask (2d bool numpy array),
         the moment mask has been loaded.
         :param batch_range: if you want to use specific batches only (to resume work, for eg).
@@ -228,9 +228,9 @@ class segment_batches:
         cls = segment_batches
         segmentation_temp = project / f'.segmentation_temp_{spec_name}'
         segmentation_temp.mkdir(exist_ok=True)
-        cls.assert_no_old_pickles(segmentation_temp, batch_range)
+        cls.assert_no_old_pickles(segmentation_temp, batch_range) # TODO: delete this or not?
         if save_intersection_images:
-            intersection_image_folder = project / f'result_{spec_name}' / 'segm'
+            intersection_image_folder = project / 'results' / spec_name / 'segm'
             cls.assert_path_is_short(intersection_image_folder)
         batches, ref_mask = cls.read_batches(project, spec_name, batch_range)
         for i, batch in enumerate(batches):
@@ -301,13 +301,13 @@ class collect_segmentation_results:
         t.drop(columns=_LOC['drop_columns_from_summary'], inplace=True)
         t = cls.drop_duplicates(t)
         t = cls.zero_self_comparison_stats(t)
-        t.to_csv(project / f'result_{spec_name}' / 'segm_result.txt', sep='\t')
+        t.to_csv(project / 'results' / spec_name / 'segm_result.txt', sep='\t')
 
 
 def plot_segmentation_results(project: pathlib.Path, spec_name: str,
                               save_plots_with_segmentation_images: bool = True) -> File:
-    result_folder = project / f'result_{spec_name}' / 'segm'
-    table = pd.read_csv(project / f'result_{spec_name}' / 'segm_result.txt',
+    result_folder = project / 'results' / spec_name / 'segm'
+    table = pd.read_csv(project / 'results' / spec_name / 'segm_result.txt',
                         sep='\t', index_col=['structure', _LOC['compare_by'][0]])
     structures = np.unique(table.index.get_level_values('structure'))
     for structure in structures:

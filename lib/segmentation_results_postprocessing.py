@@ -9,7 +9,7 @@ import pandas as pd
 
 
 def make_kinetics_table(project: pathlib.Path, spec_name: str):
-    result_folder = project / f'result_{spec_name}'
+    result_folder = project / 'results' / spec_name
     load_path = result_folder / 'segm_result.txt'
     save_path = result_folder / 'kinetic_table.txt'
 
@@ -60,7 +60,7 @@ def make_kinetics_table(project: pathlib.Path, spec_name: str):
 
 
 def make_significance_table(project: pathlib.Path, spec_name: str, structure_list: 'list[str]'):
-    result_folder = project / f'result_{spec_name}'
+    result_folder = project / 'results' / spec_name
     load_path = result_folder / 'kinetic_table.txt'
     save_path = result_folder / 'significance_table.txt'
 
