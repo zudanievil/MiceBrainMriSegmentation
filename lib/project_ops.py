@@ -1,4 +1,3 @@
-
 """
 utility functions for common downloads,
 other modules' configuration and so on
@@ -6,8 +5,10 @@ other modules' configuration and so on
 
 import pathlib
 import urllib.request
-import yaml
+
 import numpy as np
+import yaml
+
 from . import pattern_utils, transform_utils
 
 _LOC = dict()
@@ -19,6 +20,11 @@ def new_project_folder(project_folder: pathlib.Path) -> None:
     project_folder.mkdir(exist_ok=False)
     for subfolder in _LOC['project_subfolders']:
         (project_folder / subfolder).mkdir()
+    _create_default_project_spec(project_folder)
+
+
+def _create_default_project_spec(project_folder):
+    raise NotImplementedError
 
 
 def new_masks_folder(folder: pathlib.Path) -> None:

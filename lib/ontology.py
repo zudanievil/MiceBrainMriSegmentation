@@ -1,17 +1,19 @@
-import sys
-import pathlib
-import datetime
 import dataclasses
-import xml.etree.ElementTree as et
-import numpy as np
+import datetime
+import pathlib
 import subprocess
+import sys
+import xml.etree.ElementTree as et
 
 import PIL.Image
+import numpy as np
 
 _LOC = dict()
 _GLOB = dict()
 
 File = type(None)
+
+
 class EmptyMaskException(Exception): pass
 
 
@@ -277,3 +279,19 @@ def find_xml_node_parent(node: et.Element, tree_root: et.Element) -> 'et.Element
     for potential_parent in tree_root.iter():
         if node in list(potential_parent):
             return potential_parent
+
+
+def get_substructure_list(masks_folder: pathlib.Path,
+                          structure_names: 'List[str]') -> 'List[xml.etree.ElementTree.Element]':
+    root = Ontology(masks_folder, "").default_xml_tree.getroot()
+    result = []
+    for name in structure_names:
+        found = False
+        for node in root.iter('structure'):
+            if node.attrib['name'] == name:
+                found = True
+                break
+        if found:
+            for subnode in node.iter('structure'):
+                result.append(subnode)
+    return result

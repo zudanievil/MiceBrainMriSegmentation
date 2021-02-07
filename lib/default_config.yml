@@ -133,7 +133,7 @@ pattern_utils: {}
 segmentation_by_atlas:
   compare_by:  # only one entry
     - hour
-  reference_value: 0  # for compare_by
+  reference_value: 3  # for compare_by
   match_by: # any number of entries
     - frame
   batch_by: # only one entry
@@ -154,7 +154,10 @@ segmentation_by_atlas:
     'axis': 0
     'equal_var': false
   segm.gauss_filt_kw:
-    sigma: 1
+    sigma:
+      - 0
+      - 1
+      - 1
     preserve_range: True
     truncate: 1
   segm.subplots_kw:

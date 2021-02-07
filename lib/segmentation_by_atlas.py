@@ -52,17 +52,17 @@ class find_batches_for_segmentation:
         return table
 
     @staticmethod
-    def call(project: pathlib.Path, subfolder: str = '.segmentation_temp') -> File:
+    def call(project: pathlib.Path, spec_name: str = 'default') -> File:
         """
         makes table where each row is filenames, compared against each other.
         The columns' headers indicate whether image is from reference group.
-        Writes table into {project}/{subfolder}/batches.txt.
+        Writes table into {project}/specs/{spec_name}/segm/batches.txt.
         """
         cls = find_batches_for_segmentation
         t = cls.table_of_images(project)
         t = cls.split_to_groups(t)
         t.reset_index(drop=True, inplace=True)
-        save_path = project / subfolder / 'batches.txt'
+        save_path = project / 'specs' / spec_name / 'segm' / 'batches.txt'
         t.to_csv(save_path, sep='\t', na_rep='NA', index=False)
 
 
@@ -93,21 +93,27 @@ class segment_batches:
     static class that represents calculation.
     call() method is the entry point, see docs of call() method for details.
     """
+
     @staticmethod
-    def assert_plot_path_is_short(project) -> None:
-        if sys.platform.startswith('win') and len(str(project/'segm')) > 100:
+    def assert_path_is_short(path: pathlib.Path) -> None:
+        if sys.platform.startswith('win') and len(str(path)) > 100:
             raise AssertionError('On windows long file paths (> 260 chars) are not allowed.'
                                  'Since masks are nested hierarchically in directories,'
                                  'it is best if {project}/segm path is < 100 chars')
 
     @staticmethod
-    def read_batches(folder: pathlib.Path, batch_range: slice = None) -> (np.ndarray, np.ndarray):
-        batches = pd.read_csv(folder / 'batches.txt', sep='\t', na_values='NA', header=[0, 1])
+    def assert_no_old_pickles(segmentation_temp: pathlib.Path, batch_range: slice = None) -> None:
+        # for i in batches.index.to_list():
+        #     if (folder / f'{i}.pickle').exists():
+        #         raise AssertionError(f'{folder} should not contain pickles for specified batches')
+        pass
+
+    @staticmethod
+    def read_batches(project: pathlib.Path, spec_name: str, batch_range: slice = None) -> (np.ndarray, np.ndarray):
+        batches = pd.read_csv(project / 'specs' / spec_name / 'segm' / 'batches.txt',
+                              sep='\t', na_values='NA', header=[0, 1])
         if batch_range:
             batches = batches.iloc[batch_range]
-        for i in batches.index.to_list():
-            if (folder / f'{i}.pickle').exists():
-                raise AssertionError(f'{folder} should not contain pickles for specified batches')
         ref_mask = np.array(batches.columns.get_level_values(0)) == 'True'
         batches = batches.to_numpy(dtype=str)
         return batches, ref_mask
@@ -136,8 +142,8 @@ class segment_batches:
     @staticmethod
     def calculate_pixwise_pvalue(imgs, metas) -> np.ndarray:
         is_ref = metas['is_ref']
+        imgs = skimage.filters.gaussian(imgs, **_LOC['segm.gauss_filt_kw'])
         tval, pval = scipy.stats.ttest_ind(imgs[~ is_ref], imgs[is_ref], **_LOC['segm.ttest_kw'])
-        pval = 1 - skimage.filters.gaussian(1 - pval, **_LOC['segm.gauss_filt_kw'])
         return pval
 
     @staticmethod
@@ -208,25 +214,29 @@ class segment_batches:
     def call(project: pathlib.Path, masks_folder: pathlib.Path,
              mask_permutation: 'callable' = lambda x: x,
              batch_range: slice = None,
-             save_intersection_images: bool = False,
-             stat_folder: str = '.segmentation_temp') -> File:
+             save_intersection_images: bool = True,
+             spec_name: str = 'default') -> File:
         """
-        reads batches from {project}/{stat_folder}/batches.npz
+        reads batches from {project}/specs/segm/{spec_name}/batches.txt
         :param save_intersection_images: saves renders of image comparison results
-        with brain structure mask overlayed to the {project}/segm
+        with brain structure mask overlayed to the {project}/result_{spec_name}/segm
         :param mask_permutation: callable that is applied to structure mask (2d bool numpy array),
         the moment mask has been loaded.
         :param batch_range: if you want to use specific batches only (to resume work, for eg).
-        :param stat_folder: directory to store segmentation statistics in.
+        :param spec_name: name of the specification in {project}/specs/segm/{spec_name}
         """
         cls = segment_batches
+        segmentation_temp = project / f'.segmentation_temp_{spec_name}'
+        segmentation_temp.mkdir(exist_ok=True)
+        cls.assert_no_old_pickles(segmentation_temp, batch_range)
         if save_intersection_images:
-            cls.assert_plot_path_is_short(project)
-        batches, ref_mask = cls.read_batches(project / stat_folder, batch_range)
+            intersection_image_folder = project / f'result_{spec_name}' / 'segm'
+            cls.assert_path_is_short(intersection_image_folder)
+        batches, ref_mask = cls.read_batches(project, spec_name, batch_range)
         for i, batch in enumerate(batches):
             print(datetime.datetime.now(), 'starting: ', list(batch))
             imgs, metas = cls.load_imgs_metas(project, batch, ref_mask)
-            pval= cls.calculate_pixwise_pvalue(imgs, metas)
+            pval = cls.calculate_pixwise_pvalue(imgs, metas)
             mdif = cls.calc_pixwise_mean_of_difference(imgs, metas)
             ont = cls.fetch_ontology(metas, masks_folder)
             stats = []
@@ -234,10 +244,11 @@ class segment_batches:
                 structure_mask = mask_permutation(structure_mask)
                 print(datetime.datetime.now(), structure_info)
                 if save_intersection_images:
-                    cls.plot_pval_mdif(project, structure_mask, structure_info, metas, pval, mdif)
+                    cls.plot_pval_mdif(intersection_image_folder, structure_mask, structure_info, metas, pval, mdif)
                 stats.append(cls.make_stat(structure_mask, structure_info, metas, imgs, pval))
             stats = pd.concat(stats, axis=0)
-            stats.to_pickle(project / stat_folder / f'{i}.pickle', compression=None)
+            save_path = segmentation_temp / f'{i}.pickle'
+            stats.to_pickle(save_path, compression=None)
         print(datetime.datetime.now(), 'segmentation finished')
 
 
@@ -246,13 +257,13 @@ class collect_segmentation_results:
     static class that represents calculation.
     call() method is the entry point, see docs of call() method for details.
     """
+
     @staticmethod
-    def join_pickles(project: pathlib.Path, stat_folders: 'tuple[str]') -> pd.DataFrame:
+    def join_pickles(project: pathlib.Path, spec_name: str) -> pd.DataFrame:
         chunks = []
-        for folder in stat_folders:
-            for file in (project / folder).iterdir():
-                if file.suffix == '.pickle':
-                    chunks.append(pd.read_pickle(file))
+        for file in (project / f'.segmentation_temp_{spec_name}').iterdir():
+            if file.suffix == '.pickle':
+                chunks.append(pd.read_pickle(file))
         df = pd.concat(chunks, axis=0, ignore_index=True, copy=False)
         return df
 
@@ -284,27 +295,27 @@ class collect_segmentation_results:
         return t
 
     @staticmethod
-    def call(project: pathlib.Path, result_file_name: str,
-             stat_folders: 'tuple[str]' = ('.segmentation_temp',)) -> File:
+    def call(project: pathlib.Path, spec_name: str = 'default') -> File:
         cls = collect_segmentation_results
-        t = cls.join_pickles(project, stat_folders)
+        t = cls.join_pickles(project, spec_name)
         t.drop(columns=_LOC['drop_columns_from_summary'], inplace=True)
         t = cls.drop_duplicates(t)
         t = cls.zero_self_comparison_stats(t)
-        t.to_csv(project / result_file_name, sep='\t')
+        t.to_csv(project / f'result_{spec_name}' / 'segm_result.txt', sep='\t')
 
 
-def plot_segmentation_results(project: pathlib.Path, refactored_result_path: pathlib.Path,
+def plot_segmentation_results(project: pathlib.Path, spec_name: str,
                               save_plots_with_segmentation_images: bool = True) -> File:
-    save_folder = project / 'segm'
-    table = pd.read_csv(refactored_result_path, sep='\t', index_col=['structure', _LOC['compare_by'][0]])
+    result_folder = project / f'result_{spec_name}' / 'segm'
+    table = pd.read_csv(project / f'result_{spec_name}' / 'segm_result.txt',
+                        sep='\t', index_col=['structure', _LOC['compare_by'][0]])
     structures = np.unique(table.index.get_level_values('structure'))
     for structure in structures:
         save_name = structure.replace('/', '_')
         if save_plots_with_segmentation_images:
-            save_path = pattern_utils.find_file(save_name, save_folder).parent
+            save_path = pattern_utils.find_file(save_name, result_folder).parent
         else:
-            save_path = save_folder
+            save_path = result_folder
         save_path /= (save_name + ' plot.png')
 
         data = table.loc[structure]
