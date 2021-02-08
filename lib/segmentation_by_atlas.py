@@ -161,7 +161,7 @@ class segment_batches:
         return ont
 
     @staticmethod
-    def plot_pval_mdif(project, structure_mask, structure_info,  metas, pval, mdif) -> File:
+    def plot_pval_mdif(plot_folder, structure_mask, structure_info,  metas, pval, mdif) -> File:
         fig, axs = plt.subplots(1, 2, **_LOC['segm.subplots_kw'])
         axs = axs.flatten()
         im0 = axs[0].imshow(pval, cmap='viridis_r')
@@ -174,7 +174,7 @@ class segment_batches:
         axs[1].contour(structure_mask, **_LOC['segm.contour_kw'])
         d = {**metas.iloc[0].to_dict(), **structure_info}
         title = _LOC['segm.plot_title'].format(**d)
-        path = pathlib.Path(project / 'segm' /_LOC['segm.plot_path'].format(**d))
+        path = pathlib.Path(plot_folder / _LOC['segm.plot_path'].format(**d))
         path.parent.mkdir(parents=True, exist_ok=True)
         fig.suptitle(title, **_LOC['segm.plot_title_kw'])
         fig.savefig(path, **_LOC['segm.savefig_kw'])
@@ -237,7 +237,8 @@ class segment_batches:
             print(datetime.datetime.now(), 'starting: ', list(batch))
             imgs, metas = cls.load_imgs_metas(project, batch, ref_mask)
             pval = cls.calculate_pixwise_pvalue(imgs, metas)
-            mdif = cls.calc_pixwise_mean_of_difference(imgs, metas)
+            # mdif = cls.calc_pixwise_mean_of_difference(imgs, metas)
+            mdif = cls.calc_pixwise_difference_of_means(imgs, metas)
             ont = cls.fetch_ontology(metas, masks_folder)
             stats = []
             for structure_mask, structure_info in ontology.masks_generator(ont):
@@ -307,8 +308,9 @@ class collect_segmentation_results:
 def plot_segmentation_results(project: pathlib.Path, spec_name: str,
                               save_plots_with_segmentation_images: bool = True) -> File:
     result_folder = project / 'results' / spec_name / 'segm'
-    table = pd.read_csv(project / 'results' / spec_name / 'segm_result.txt',
-                        sep='\t', index_col=['structure', _LOC['compare_by'][0]])
+    load_path = project / 'results' / spec_name / 'segm_result_refactored.txt'
+    table = pd.read_csv(load_path, sep='\t',
+                        index_col=['structure', _LOC['compare_by'][0]])
     structures = np.unique(table.index.get_level_values('structure'))
     for structure in structures:
         save_name = structure.replace('/', '_')
@@ -331,7 +333,17 @@ def plot_segmentation_results(project: pathlib.Path, spec_name: str,
         print(datetime.datetime.now(), save_path)
 
 
-def refactor_summary(load_path, save_path) -> File:
+def refactor_summary(project: pathlib.Path, spec_name) -> File:
+    """
+    Use "compare_by" and pval thresholds to create a table with
+    anatomical_structure/(mean_intensity, std, pvalue) axes
+    ('segm_result.txt' -> 'segm_result_refactored.txt').
+    The produced table is much more human-readable.
+    """
+    result_folder = project / 'results' / spec_name
+    load_path = result_folder / 'segm_result.txt'
+    save_path = result_folder / 'segm_result_refactored.txt'
+
     table = pd.read_csv(load_path, sep='\t')
     compare_by = _LOC['compare_by'][0]
     plot_cols = table.columns[[c.startswith(('mean', 'std', 'px')) for c in table.columns]].to_list()
