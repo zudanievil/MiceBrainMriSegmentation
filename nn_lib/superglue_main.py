@@ -1,7 +1,7 @@
 
 import torch
-from .superpoint import SuperPoint
-from .superglue import SuperGlue
+from .superglue_point import SuperPoint
+from .superglue_glue import SuperGlue
 
 
 class Matching(torch.nn.Module):
