@@ -48,27 +48,29 @@ def dataset_from_image_dict(image_dict_path: pathlib.Path, dataset_folder: pathl
     :return: puts prepared dataset elements into {dataset_folder}/new_images directory.
     Takes approximately 50 ms per image.
     """
-    # mb add parallel execution?
     dataset_folder = dataset_folder / 'new_images'
     for image_info in image_info_generator(image_dict_path):
-        image = image_info.image_contrasted()
-        brain_mask = mask_the_brain(image_info, image.shape)
-        head_mask = mask_head(image, brain_mask)
-        head_mask = head_mask & (~ brain_mask)
-
-        image = image[..., np.newaxis].astype(np.float32)
-        gnd = np.stack([brain_mask, head_mask], axis=-1).astype(np.float32)
+        gnd, image = load_and_segment(image_info)
         save_path = dataset_folder / image_info.name()
         np.savez(save_path, inp=image, gnd=gnd)
-
         print(datetime.datetime.now(), image_info, 'done')
     print(datetime.datetime.now(), 'finished')
+
+
+def load_and_segment(image_info: 'ImageInfo') -> (np.ndarray, np.ndarray):
+    image_contrasted = image_info.image_contrasted()
+    brain_mask = mask_the_brain(image_info, image_contrasted.shape)
+    head_mask = mask_head(image_contrasted, brain_mask)
+    head_mask = head_mask & (~ brain_mask)
+    image_contrasted = image_contrasted[..., np.newaxis].astype(np.float32)
+    segmentation = np.stack([brain_mask, head_mask], axis=-1).astype(np.float32)
+    return segmentation, image_contrasted
 
 
 @dataclasses.dataclass(frozen=True)
 class ImageInfo(object):
     """
-    small utility class for convenient data retrieval.
+    Small utility class for convenient data retrieval.
     Note that it reads image data etc from disk, and does no caching
     """
     mask_path: pathlib.Path
@@ -82,10 +84,10 @@ class ImageInfo(object):
             meta = yaml.safe_load(f.read())
         return meta
 
-    def image_contrasted(self) -> np.ndarray:
+    def image_contrasted(self) -> 'np.ndarray[float]':
         return sigmoid_with_quantiles(self.image())
 
-    def image(self):
+    def image(self) -> np.ndarray:
         return np.load(self.image_path, fix_imports=False)
 
     def brain_mask_right_half(self) -> 'np.ndarray[bool]':
@@ -109,7 +111,7 @@ class ImageInfo(object):
         return self.image_path.with_suffix('').name
 
 
-def image_info_generator(image_dict_file) -> ImageInfo:
+def image_info_generator(image_dict_file) -> 'collections.Iterable[ImageInfo]':
     with image_dict_file.open('rt') as f:
         image_dict = yaml.safe_load(f.read())
     for mask_path in image_dict:
@@ -121,15 +123,17 @@ def image_info_generator(image_dict_file) -> ImageInfo:
 def mask_the_brain(image_info: ImageInfo, image_shape: (int, int)) -> 'np.ndarray[bool]':
     meta = image_info.meta()
     brain_mask = image_info.brain_mask_right_half()
-    result = np.zeros(np.array(image_shape, dtype=np.int))
+    result = np.zeros(image_shape, dtype=np.float)
     for side in ['l', 'r']:
         bx = meta[f'{side}bbox']
         bx_shape = np.array([bx[1] - bx[0], bx[3] - bx[2]], dtype=np.int)
-        mask = skimage.transform.resize(brain_mask, bx_shape, preserve_range=True)
+        mask = skimage.transform.resize(brain_mask*1.0, bx_shape)
+        # do not resize boolean images, this is unstable!!!
+        # from time to time the resized image is blank (especially when < 100x100 px)
         if side == 'l':
             mask = np.flip(mask, axis=1)
         result[bx[0]:bx[1], bx[2]:bx[3]] = mask
-    result = skimage.transform.rotate(result, meta['rotation'], preserve_range=True) > 0.5
+    result = skimage.transform.rotate(result, meta['rotation']) > 0.5
     return result
 
 

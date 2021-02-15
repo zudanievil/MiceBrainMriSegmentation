@@ -119,6 +119,33 @@ class segment_batches:
         return batches, ref_mask
 
     @staticmethod
+    def read_structure_set(project: pathlib.Path, spec_name: str) -> 'set[str]':
+        p = project / 'specs' / spec_name / 'segm' / 'structures.txt'
+        structure_set = None
+        if p.exists():
+            with p.open('rt') as f:
+                structure_set = {s.strip() for s in f.readlines()}
+        if '' in structure_set:
+            structure_set.remove('')
+        return structure_set
+
+    @staticmethod
+    def validate_structure_set(structure_set: set, masks_folder: pathlib.Path,
+                               mismatch_policy: "{'strict', 'ignore'}" = 'strict'):
+        if mismatch_policy not in {'strict', 'ignore'}:
+            raise NotImplementedError(f'mismatch policy "{mismatch_policy}" not implemented')
+        ont = ontology.Ontology(masks_folder, 'placeholder')
+        root = ont.default_xml_tree.getroot()
+        default_structure_set = {s.attrib['name'] for s in root.iter('structure')}
+        del root
+        for structure in structure_set:
+            if structure not in default_structure_set:
+                if mismatch_policy == 'strict':
+                    p = ont.folder / 'default.xml'
+                    raise AssertionError(f'"{structure}" does not match any default\n'
+                                         f'tree structure of ontology from {p}')
+
+    @staticmethod
     def load_imgs_metas(project, batch, ref_mask) -> (np.ndarray, np.ndarray):
         imgs = load_image_batch(project, batch)
         metas = load_meta_batch(project, batch)
@@ -217,7 +244,9 @@ class segment_batches:
              save_intersection_images: bool = True,
              spec_name: str = 'default') -> File:
         """
-        reads batches from {project}/specs/segm/{spec_name}/batches.txt
+        Reads batches from {project}/specs/{spec_name}/segm/batches.txt
+        Reads structure list from {project}/specs/{spec_name}/segm/structure.txt
+        if the structure list is not found, does segmentation for all structures.
         :param save_intersection_images: saves renders of image comparison results
         with brain structure mask overlayed to the {project}/results/{spec_name}/segm
         :param mask_permutation: callable that is applied to structure mask (2d bool numpy array),
@@ -228,10 +257,12 @@ class segment_batches:
         cls = segment_batches
         segmentation_temp = project / f'.segmentation_temp_{spec_name}'
         segmentation_temp.mkdir(exist_ok=True)
-        cls.assert_no_old_pickles(segmentation_temp, batch_range) # TODO: delete this or not?
+        cls.assert_no_old_pickles(segmentation_temp, batch_range)  # TODO: delete this or not?
         if save_intersection_images:
             intersection_image_folder = project / 'results' / spec_name / 'segm'
             cls.assert_path_is_short(intersection_image_folder)
+        structure_set = cls.read_structure_set(project, spec_name)
+        cls.validate_structure_set(structure_set, masks_folder)
         batches, ref_mask = cls.read_batches(project, spec_name, batch_range)
         for i, batch in enumerate(batches):
             print(datetime.datetime.now(), 'starting: ', list(batch))
@@ -242,6 +273,9 @@ class segment_batches:
             ont = cls.fetch_ontology(metas, masks_folder)
             stats = []
             for structure_mask, structure_info in ontology.masks_generator(ont):
+                if structure_set:
+                    if structure_info['name'] not in structure_set:
+                        continue
                 structure_mask = mask_permutation(structure_mask)
                 print(datetime.datetime.now(), structure_info)
                 if save_intersection_images:
@@ -251,6 +285,24 @@ class segment_batches:
             save_path = segmentation_temp / f'{i}.pickle'
             stats.to_pickle(save_path, compression=None)
         print(datetime.datetime.now(), 'segmentation finished')
+
+
+def print_structure_list(project: pathlib.Path, masks_folder: pathlib.Path, spec_name: str = 'default'):
+    """
+    prints the list of all the structures into the {project}/spec/{spec_name}/segm/structures.txt
+    indents them with space to show the hierarchy
+    :raises AssertionError: if structures.txt already exists
+    """
+    save_path = project / 'specs' / spec_name / 'segm' / 'structures.txt'
+    if save_path.exists():
+        raise AssertionError(f'{save_path} already exists')
+    save_path.parent.mkdir(exist_ok=True)
+    ont = ontology.Ontology(masks_folder, 'placeholder')
+    root = ont.default_xml_tree.getroot()
+    with save_path.open('wt') as f:
+        for st in root.iter('structure'):
+            s = ' ' * int(st.attrib['level']) + st.attrib['name']
+            print(s, end='\n', file=f)
 
 
 class collect_segmentation_results:
