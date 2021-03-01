@@ -125,13 +125,15 @@ class segment_batches:
         if p.exists():
             with p.open('rt') as f:
                 structure_set = {s.strip() for s in f.readlines()}
-        if '' in structure_set:
-            structure_set.remove('')
+            if '' in structure_set:
+                structure_set.remove('')
         return structure_set
 
     @staticmethod
     def validate_structure_set(structure_set: set, masks_folder: pathlib.Path,
                                mismatch_policy: "{'strict', 'ignore'}" = 'strict'):
+        if not structure_set:
+            return None
         if mismatch_policy not in {'strict', 'ignore'}:
             raise NotImplementedError(f'mismatch policy "{mismatch_policy}" not implemented')
         ont = ontology.Ontology(masks_folder, 'placeholder')
@@ -167,10 +169,18 @@ class segment_batches:
         return mdif
 
     @staticmethod
-    def calculate_pixwise_pvalue(imgs, metas) -> np.ndarray:
+    def calculate_pixwise_pvalue_t_ind(imgs, metas) -> np.ndarray:
+        is_ref = metas['is_ref']
+        # imgs = skimage.filters.gaussian(imgs, **_LOC['segm.gauss_filt_kw'])
+        tval, pval = scipy.stats.ttest_ind(imgs[~ is_ref], imgs[is_ref], **_LOC['segm.ttest_kw'])
+        pval = 1 - skimage.filters.gaussian(1 - pval, sigma=1, truncate=1)
+        return pval
+
+    @staticmethod
+    def calculate_pixwise_pvalue_t_rel(imgs, metas) -> np.ndarray:
         is_ref = metas['is_ref']
         imgs = skimage.filters.gaussian(imgs, **_LOC['segm.gauss_filt_kw'])
-        tval, pval = scipy.stats.ttest_ind(imgs[~ is_ref], imgs[is_ref], **_LOC['segm.ttest_kw'])
+        zval, pval = scipy.stats.ttest_rel(imgs[~ is_ref], imgs[is_ref], axis=0)
         return pval
 
     @staticmethod
@@ -242,7 +252,8 @@ class segment_batches:
              mask_permutation: 'callable' = lambda x: x,
              batch_range: slice = None,
              save_intersection_images: bool = True,
-             spec_name: str = 'default') -> File:
+             spec_name: str = 'default',
+             comparison_type: "{'pairwise', 'means'}" = 'pairwise') -> File:
         """
         Reads batches from {project}/specs/{spec_name}/segm/batches.txt
         Reads structure list from {project}/specs/{spec_name}/segm/structure.txt
@@ -255,6 +266,7 @@ class segment_batches:
         :param spec_name: name of the specification in {project}/specs/segm/{spec_name}
         """
         cls = segment_batches
+        assert comparison_type in {'pairwise', 'means'}
         segmentation_temp = project / f'.segmentation_temp_{spec_name}'
         segmentation_temp.mkdir(exist_ok=True)
         cls.assert_no_old_pickles(segmentation_temp, batch_range)  # TODO: delete this or not?
@@ -267,9 +279,15 @@ class segment_batches:
         for i, batch in enumerate(batches):
             print(datetime.datetime.now(), 'starting: ', list(batch))
             imgs, metas = cls.load_imgs_metas(project, batch, ref_mask)
-            pval = cls.calculate_pixwise_pvalue(imgs, metas)
-            # mdif = cls.calc_pixwise_mean_of_difference(imgs, metas)
-            mdif = cls.calc_pixwise_difference_of_means(imgs, metas)
+            # imgs *= (metas['reference'] / metas['ER_head_median']).to_numpy()[..., np.newaxis, np.newaxis]
+            # there are basically 2 methods to compare the images in batch:
+            # by pairwise comparison or difference comparison
+            if comparison_type == 'means':
+                pval = cls.calculate_pixwise_pvalue_t_ind(imgs, metas)
+                mdif = cls.calc_pixwise_difference_of_means(imgs, metas)
+            elif comparison_type == 'pairwise':
+                pval = cls.calculate_pixwise_pvalue_t_rel(imgs, metas)
+                mdif = cls.calc_pixwise_mean_of_difference(imgs, metas)
             ont = cls.fetch_ontology(metas, masks_folder)
             stats = []
             for structure_mask, structure_info in ontology.masks_generator(ont):
