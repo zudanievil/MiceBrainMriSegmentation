@@ -1,4 +1,3 @@
-import sys
 import datetime
 import tqdm
 import numpy
@@ -152,7 +151,7 @@ def stats_over_structure_mask(spec, pval, imgs, metas, structure_mask, structure
 def main(segmentation_result_folder_info: info_classes.segmentation_result_folder_info_like,
          batch_range: slice = None, save_intersection_images: bool = True):
     srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
-
+    plt.ioff()
     if save_intersection_images:
         plot_folder = srfi.plot_folder()
         assert len(str(plot_folder)) <= PLOT_FOLDER_MAX_LENGTH,\
@@ -163,7 +162,7 @@ def main(segmentation_result_folder_info: info_classes.segmentation_result_folde
     mask_permutation = load_mask_permutation(srfi)
     bgen = batches_gen(srfi, batch_range)
     n_batches = bgen.__next__()
-    progress_bar = tqdm.tqdm(leave=False, total=n_batches, file=sys.stdout)
+    progress_bar = tqdm.tqdm(leave=False, total=n_batches)
     for batch_no, ref_mask, batch in bgen:
         progress_bar.update()
         progress_bar.set_postfix_str(f'\n{batch_no} | {datetime.datetime.now()} | {batch}\n')
@@ -179,3 +178,4 @@ def main(segmentation_result_folder_info: info_classes.segmentation_result_folde
         stats = pandas.concat(stats, axis=0)
         pickle_path = srfi.segmentation_temp()/(batch_no + '.pickle')
         stats.to_pickle(pickle_path)
+    plt.ion()
