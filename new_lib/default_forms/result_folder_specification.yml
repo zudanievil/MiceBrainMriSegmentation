@@ -1,0 +1,85 @@
+general:
+  ontology_folder: 'replace with ontology folder absolute path'
+  image_folder: 'replace with image folder absolute path'
+
+batching:
+  compare_by:  # only one entry
+    - hour
+  comparison_reference_value: '0'  # for compare_by
+  match_by: # any number of entries
+    - frame
+  batch_by: # only one entry
+    - animal
+
+comparison:
+  normalize_image_by: 'reference'   # metadata key
+  pval_thresholds:
+    - 1
+    - 0.05
+    - 0.01
+  drop_columns_from_summary:
+    - lbbox
+    - rbbox
+    - refzone
+    - rotation
+  ttest_kwargs:
+    'axis': 0
+    'equal_var': false
+  gaussian_filter_kwargs:
+    sigma:
+      - 0
+      - 1
+      - 1
+    preserve_range: True
+    truncate: 1
+  image_comparison_type: 'pairwise'
+  # comparison plot
+  figure_kwargs:
+    figsize:
+      - 10
+      - 5
+  plot_title: '0h vs {hour}, group: {group}, frame: {frame}\np-value and mean relative intensity'
+  plot_title_kwargs:
+    fontsize: 18
+  plot_path: '{filename} {frame} at {hour}h.png'
+  colorbar_kwargs:
+    fraction: 0.045
+  contour_kwargs:
+    colors: '#cc0000'
+    levels: 0
+    linewidths: 0.6
+  savefig_kwargs:
+    bbox_inches: tight
+    dpi: 96
+    format: png
+    transparent: false
+
+summary_plot:
+  figure_kwargs:
+    figsize:
+      - 12
+      - 6
+  line_kwargs: # one for each p-value level
+    - alpha: 0.6
+      color: '#00008c'
+      elinewidth: 1
+      label: p <1
+      lw: 2
+      marker: o
+    - alpha: 0.8
+      color: '#000046'
+      elinewidth: 1
+      label: p <.5
+      lw: 2
+      marker: o
+    - alpha: 1.0
+      color: '#000000'
+      elinewidth: 1
+      label: p <.01
+      lw: 2
+      marker: o
+  savefig_kwargs:
+    bbox_inches: tight
+    dpi: 96
+    format: png
+    transparent: false

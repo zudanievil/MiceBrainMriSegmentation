@@ -1,10 +1,13 @@
 if __name__ == '__main__':
     import sys
     import pathlib
+
     sys.path.append('..')
     from new_lib.core import info_classes as ic
-    p = pathlib.Path(sys.argv[1])
-    m = sys.argv[2] if len(sys.argv) > 2 else None
-    proj = ic.ProjectInfo.new_single_root_project(p, m)
-    proj.write_map(exist_ok=False)
-    proj.create_folders(exist_ok=True)
+
+    p = pathlib.Path('C:/Users/user/files/lab')
+    groups = ('c57bl_8w', 'cgtg_8w')
+
+    for g in groups:
+        image_folder_info = ic.ImageFolderInfo(p / g)
+        image_folder_info.write()

@@ -1,0 +1,100 @@
+file_name_fields: #image or metadata name consists of the field values separated by underscore
+  - group
+  - hour
+  - animal
+  - frame
+metadata_keys:
+  rotation:
+    dtype: 'float'
+    indices:
+      - 0
+  reference:
+    dtype: 'float'
+    indices:
+      - 0
+  lbbox:
+    dtype: 'int'
+    indices:  # min_height, max_height, min_width, max_width
+      - 1
+      - 5
+      - 0
+      - 4
+  rbbox:
+    dtype: 'int'
+    indices:
+      - 1
+      - 5
+      - 0
+      - 4
+  refzone:
+    dtype: 'float'
+    indices:
+      - 1
+      - 0
+      - 3
+      - 2
+      - 5
+      - 4
+      - 7
+      - 6
+cropped_image_shapes:  #this is used to resize cropped images and pre-render masks
+#  frame:
+#   - height
+#   - width
+  f1:
+    - 80
+    - 100
+  f10:
+    - 80
+    - 120
+  f11:
+    - 70
+    - 120
+  f12:
+    - 70
+    - 100
+  f13:
+    - 70
+    - 100
+  f14:
+    - 60
+    - 80
+  f15:
+    - 40
+    - 50
+  f16:
+    - 40
+    - 50
+  f17:
+    - 40
+    - 50
+  f18:
+    - 30
+    - 50
+  f19:
+    - 15
+    - 30
+  f2:
+    - 80
+    - 100
+  f3:
+    - 80
+    - 120
+  f4:
+    - 80
+    - 120
+  f5:
+    - 80
+    - 120
+  f6:
+    - 80
+    - 130
+  f7:
+    - 80
+    - 130
+  f8:
+    - 80
+    - 130
+  f9:
+    - 80
+    - 130

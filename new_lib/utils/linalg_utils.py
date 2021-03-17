@@ -47,6 +47,11 @@ def bbox_to_coords(y0: float, y1: float, x0: float, x1: float, non_cycled=True) 
     return coo
 
 
+def bbox_crop(image, bbox):
+    a, b, c, d = bbox
+    return image[a:b, c:d]
+
+
 def rotate_coords(coords: numpy.ndarray, center: 'numpy.ndarray or tuple or int',
                   angle: int, degrees=False) -> numpy.ndarray:
     """
