@@ -11,26 +11,6 @@ import skimage.segmentation as sks
 sys.path.append('..')
 from nn_lib import dataset_preparation
 
-def unused_function1(x: np.ndarray, n_iter):
-    # iteratively searches for the most common values in the array
-    _min = np.min(x)
-    _max = np.max(x)
-    mask = x >= _min
-    count = mask.sum()
-    for _ in range(n_iter):
-        mid = (_max + _min) / 2
-        new_mask = mask & (x > mid)
-        new_count = new_mask.sum()
-        if new_count > count / 2:
-            count = new_count
-            mask = new_mask
-            _min = mid
-        else:
-            count = count - new_count
-            mask ^= new_mask
-            _max = mid
-    return mask, _max, _min
-
 
 def gaussian(x, a, mu, sigma):
     return a * np.exp(- ((x - mu) / sigma) ** 2)

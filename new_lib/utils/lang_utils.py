@@ -4,7 +4,7 @@ from xml.etree import ElementTree
 
 class UniversumSet:
     """instance always returns true for "in" operator"""
-    def __contains__():
+    def __contains__(self):
         return True
 
 
@@ -24,4 +24,3 @@ def find_xml_node_parent(node: ElementTree.Element, tree_root: ElementTree.Eleme
     for potential_parent in tree_root.iter():
         if node in list(potential_parent):
             return potential_parent
-

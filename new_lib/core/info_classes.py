@@ -2,11 +2,12 @@
 This module has utility classes that represent abstract concepts
 like research projects, masks, etc in a useful way
 """
+
+
 import yaml
 import shutil
 import urllib.request
 import pathlib
-import dataclasses
 import numpy as np
 import xml.etree.ElementTree as et
 import PIL
@@ -185,6 +186,11 @@ class ImageFolderInfo:
 
     def image_info(self, name: str):
         return ImageInfo(self, name)
+
+    def __len__(self):
+        for i, p in enumerate(self.image_folder().iterdir()):
+            pass
+        return i + 1
 
 
 class ImageInfo:
