@@ -24,3 +24,22 @@ def find_xml_node_parent(node: ElementTree.Element, tree_root: ElementTree.Eleme
     for potential_parent in tree_root.iter():
         if node in list(potential_parent):
             return potential_parent
+
+
+def delete_folder(folder: pathlib.Path):
+    for path in folder.iterdir():
+        if path.is_dir():
+            delete_folder(path)
+        else:
+            path.unlink()
+    folder.rmdir()
+
+
+def find_file(fname_start: str, folder: pathlib.Path) -> pathlib.Path:  # TODO: rewrite for fname_regex
+    for p in folder.iterdir():
+        if p.is_dir():
+            result = find_file(fname_start, p)
+            if result:
+                return result
+        if p.is_file() and p.name.startswith(fname_start):
+            return p

@@ -1,4 +1,5 @@
 import datetime
+import pathlib
 import tqdm
 import numpy
 import pandas
@@ -7,6 +8,7 @@ import skimage.filters
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from ..core import info_classes
+from ..utils import lang_utils
 
 
 PLOT_FOLDER_MAX_LENGTH = 100
@@ -28,10 +30,10 @@ def batches_gen(srfi: info_classes.segmentation_result_folder_info_like, batch_r
                               true_values='True', false_values='False')
     ref_mask = batches.columns.get_level_values(0).to_numpy()
     ref_mask = ref_mask == 'True'
-    batches = batches.iloc[batch_range] if batch_range else batches
+    batches = batches.loc[batch_range] if batch_range else batches
     yield len(batches)
     for i in batches.index:
-        yield i, ref_mask, batches.iloc[i].to_numpy()
+        yield i, ref_mask, batches.loc[i].to_numpy()
 
 
 def get_imgs_metas(sfri: info_classes.segmentation_result_folder_info_like, batch, ref_mask, spec):
@@ -164,8 +166,8 @@ def main(segmentation_result_folder_info: info_classes.segmentation_result_folde
     n_batches = bgen.__next__()
     progress_bar = tqdm.tqdm(leave=False, total=n_batches)
     for batch_no, ref_mask, batch in bgen:
+        progress_bar.set_postfix_str(str(batch_no))
         progress_bar.update()
-        progress_bar.set_postfix_str(f'\n{batch_no} | {datetime.datetime.now()} | {batch}\n')
         imgs, metas = get_imgs_metas(srfi, batch, ref_mask, spec)
         pval, mdif = compare(imgs, metas, spec)
         stats = []
@@ -176,6 +178,57 @@ def main(segmentation_result_folder_info: info_classes.segmentation_result_folde
                 plot_pval_mdif(spec, pval, mdif, metas, structure_mask, structure_info, plot_folder)
             stats.append(stats_over_structure_mask(spec, pval, imgs, metas, structure_mask, structure_info))
         stats = pandas.concat(stats, axis=0)
-        pickle_path = srfi.segmentation_temp()/(batch_no + '.pickle')
+        pickle_path = srfi.segmentation_temp()/f'{batch_no}.pickle'
         stats.to_pickle(pickle_path)
     plt.ion()
+
+
+# ==============================================================================================
+def collect_segmentation_results(segmentation_result_folder_info: info_classes.segmentation_result_folder_info_like,
+                                 delete_temporary_folder=False):
+    srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
+    temp_folder = srfi.segmentation_temp()
+    t = join_pickles(temp_folder)
+    t = drop_duplicates(t, srfi.specification())
+    t = zero_self_comparison_stats(t)
+    save_path = srfi.table_folder() / 'segm_result.txt'
+    t.to_csv(save_path, sep='\t')
+    if delete_temporary_folder:
+        lang_utils.delete_folder(temp_folder)
+
+    
+def join_pickles(folder: pathlib.Path) -> pandas.DataFrame:
+    chunks = []
+    for path in folder.iterdir():
+        chunks.append(pandas.read_pickle(path))
+    t = pandas.concat(chunks, axis=0, ignore_index=True, copy=False)
+    return t
+
+
+def drop_duplicates(t: pandas.DataFrame, spec) -> pandas.DataFrame:
+    drop_cols = spec['segmentation']['drop_columns_from_summary']
+    t.drop(columns=drop_cols, inplace=True)
+    bspec = spec['batching']
+    index_col = ['structure'] + bspec['compare_by'] + bspec['match_by'] + bspec['batch_by']
+    t.set_index(index_col, inplace=True)
+    dupl = t.index.duplicated(keep='first')  # bool mask
+    dupl = numpy.arange(len(dupl))[dupl]  # int ordinals
+    t.reset_index(inplace=True)
+    t.drop(index=dupl, inplace=True)
+    t.set_index(index_col, inplace=True)
+    t.sort_index(axis=0, inplace=True)
+    # we get ref_hour records per each hour
+    # it is logical to make 1 ref_hour record per all hours
+    # so we make a Multiindex table and delete all the rows with duplicate
+    # index of (structure, hour, frame, animal)
+    return t
+
+
+def zero_self_comparison_stats(t: pandas.DataFrame) -> pandas.DataFrame:
+    idx = t[t['is_ref']].index
+    clmn1 = ['mean (p <0.05)', 'std (p <0.05)', 'mean (p <0.01)', 'std (p <0.01)', ]
+    clmn2 = ['px (p <0.05)', 'px (p <0.01)', ]
+    t.loc[idx, clmn1] = numpy.nan
+    t.loc[idx, clmn2] = 0
+    # reference values cannot differ from themselves, so we set them to 0/nan
+    return t
