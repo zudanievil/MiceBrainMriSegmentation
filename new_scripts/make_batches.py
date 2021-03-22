@@ -2,7 +2,7 @@ import sys
 import pathlib
 import numpy as np
 sys.path.append('..')
-from lib import load_config, segmentation_by_atlas
+from ignore_lib import load_config, segmentation_by_atlas
 
 if __name__ == '__main__':
     args = [pathlib.Path(a) for a in sys.argv[1:]]

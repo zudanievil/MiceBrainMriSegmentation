@@ -12,6 +12,7 @@ import numpy as np
 import xml.etree.ElementTree as et
 import PIL
 import typing
+from ..utils import lang_utils
 
 _LOCALS = {
     'download_slice_ids': 'http://api.brain-map.org/api/v2/data/query.xml?criteria=model::AtlasImage,rma::criteria,'
@@ -29,11 +30,11 @@ image_info_like = typing.Union['ImageInfo', path_like]
 segmentation_result_folder_info_like = typing.Union['SegmentationResultFolderInfo', path_like]
 image_info_iterator_type = typing.Iterator['ImageInfo']
 ontology_info_iterator_type = typing.Iterator['OntologyInfo']
-default_forms_folder = pathlib.Path(__file__).parent.parent / 'default_forms'
+default_forms_folder = pathlib.Path(__file__).parent.parent / 'default_specifications'
 
 
 class OntologyFolderInfo:
-    __slots__ = '_folder'
+    __slots__ = '_folder',
 
     def __init__(self, folder: ontology_folder_info_like):
         if isinstance(folder, self.__class__):
@@ -53,41 +54,42 @@ class OntologyFolderInfo:
     def ontology_info(self, frame: str) -> 'OntologyInfo':
         return OntologyInfo(self, frame)
 
-    def write(self) -> 'files':
-        self._folder.mkdir(exist_ok=False, parents=True)
-        for subfolder in ('onts', 'svgs'):
-            (self._folder / subfolder).mkdir()
-        form_src = default_forms_folder / 'masks_download_form.yml'
-        form_dst = self._folder / 'masks_download_form.yml'
+    def write(self):
+        assert not self._folder.exists()
+        # self._folder.mkdir(exist_ok=False, parents=True)
+        for k, v in self.__class__.__dict__.items():
+            if k.endswith('folder') and k not in self.__slots__:
+                v(self).mkdir(parents=True, exist_ok=True)
+        form_src = default_forms_folder / 'ontology_folder_specification.yml'
+        form_dst = self._folder / 'ontology_folder_specification.yml'
         shutil.copy(form_src, form_dst)
 
-    def download_slice_ids_table(self) -> 'files':
-        pass
+    def specification(self) -> dict:
+        p = self._folder / 'ontology_folder_specification.yml'
+        with p.open('rt') as f:
+            s = yaml.safe_load(f.read())
+        return s
 
-    def download_svgs(self) -> 'files':
-        pass
-
-    def download_default_ont(self) -> 'files':
-        pass
-
-    def ontology_folder_specifications(self) -> dict:
-        pass
+    def frames(self):
+        result = []
+        for p in self.svgs_folder().iterdir():
+            if p.suffix == '.svg':
+                result.append(p.stem)
+        return result
 
     def __iter__(self) -> ontology_info_iterator_type:
-        for o in (self.onts_folder() / 'onts').iterdir():
-            f = o.with_suffix('').name
-            if f != 'default':
-                yield OntologyInfo(self, f)
+        for frame in self.frames():
+            yield OntologyInfo(self, frame)
 
 
 class OntologyInfo:
     __slots__ = '_folder_info', '_frame'
 
-    def __init__(self, folder_info: ontology_info_like, frame: str):
+    def __init__(self, folder_info: ontology_folder_info_like, frame: str):
         self._folder_info = OntologyFolderInfo(folder_info)
         self._frame = frame
 
-    def folder_info(self) -> 'OntologyFolderInfo':
+    def folder_info(self) -> OntologyFolderInfo:
         return self._folder_info
 
     def frame(self) -> str:
@@ -105,8 +107,11 @@ class OntologyInfo:
                 fn = s.attrib['filename']
                 return pathlib.Path(fn) if fn else None
 
-    def open_mask(self, path: path_like):
-        path = self._folder_info.folder() / self._frame / (str(path) + '.png')
+    def masks_folder(self) -> pathlib.Path:
+        return self._folder_info.folder() / self._frame
+
+    @staticmethod
+    def open_mask(path: path_like):
         mask = PIL.Image.open(path)
         mask = np.array(mask.getdata(), dtype=np.uint8).reshape((mask.size[1], mask.size[0]))
         return mask > 127
@@ -118,7 +123,7 @@ class OntologyInfo:
         return et.parse(self.tree_path())
 
     def svg_path(self) -> pathlib.Path:
-        return self._folder_info.onts_folder() / (self._frame + '.svg')
+        return self._folder_info.svgs_folder() / (self._frame + '.svg')
 
     def svg(self):
         return et.parse(self.svg_path())
@@ -278,7 +283,6 @@ class SegmentationResultFolderInfo:
 
     def mask_permutation_path(self) -> pathlib.Path:
         return self.specification_folder() / 'mask_permutation.py'
-
 
     def segmentation_temp(self):
         return self.folder() / 'temp'

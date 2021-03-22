@@ -101,11 +101,11 @@ class ImageInfo(object):
 
     def masks_folder(self) -> pathlib.Path:  # TODO: fix this
         raise NotImplementedError
-        return self.mask_path.parent.parent
+        return self.mask_path_absolute.parent.parent
 
     def frame_id(self) -> str:  # TODO: fix this
         raise NotImplementedError
-        return self.mask_path.parent.name
+        return self.mask_path_absolute.parent.name
 
     def name(self):
         return self.image_path.with_suffix('').name

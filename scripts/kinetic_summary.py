@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def get_some_kinetic_parameters(csv_path, save_path):  # TODO: split, to lib
+def get_some_kinetic_parameters(csv_path, save_path):  # TODO: split, to ignore_lib
     assert csv_path != save_path
     t1 = pd.read_csv(csv_path, sep='\t')
     t1.drop(columns=['is_ref', 'reference', 'group',

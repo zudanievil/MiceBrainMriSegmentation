@@ -4,7 +4,7 @@ import sys
 import pathlib
 import numpy as np
 sys.path.append('..')
-from lib import load_config, segmentation_by_atlas as sba, ontology as ont, segmentation_results_postprocessing as srp
+from ignore_lib import load_config, segmentation_by_atlas as sba, ontology as ont, segmentation_results_postprocessing as srp
 
 if __name__ == '__main__':
     load_config(sba, ont)

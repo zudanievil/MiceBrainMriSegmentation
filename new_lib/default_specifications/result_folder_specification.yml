@@ -12,7 +12,7 @@ batching:
     - animal
 
 comparison:
-  normalize_image_by: 'reference'   # metadata key
+  normalize_image_by: 'ER_head_median'   # metadata key
   pval_thresholds:
     - 1
     - 0.05
@@ -21,7 +21,24 @@ comparison:
     - lbbox
     - rbbox
     - refzone
+    - reference
     - rotation
+    - ER_animal_mean
+    - ER_animal_median
+    - ER_animal_std
+    - ER_back_mean
+    - ER_back_median
+    - ER_back_std
+    - ER_brain_mean
+    - ER_brain_median
+    - ER_brain_std
+    - ER_head_mean
+#    - ER_head_median
+    - ER_head_std
+    - ER_histogram_bg_peak
+    - ER_image_mean
+    - ER_image_median
+    - ER_image_std
   ttest_kwargs:
     'axis': 0
     'equal_var': false

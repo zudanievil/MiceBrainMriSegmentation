@@ -1,0 +1,36 @@
+downloading_arguments:
+  atlas_id: 1
+  atlas_svg_groups:
+  - 28
+  slice_coordinates: # slice ids can be automatically joined with an equispaced coordinate range and printed to slice_ids.txt file
+    start: -7.905
+    stop: 5.345
+  svg_names_and_slice_ids: # each key will be used as a name for a corresponding svg file
+    AP_minus_7p9: 100960098
+    AP_zero: 100960309
+    AP_plus_4p0: 100960468
+
+downloading_urls:
+  atlas: 'http://atlas.brain-map.org/'
+  atlas_api_help: 'http://help.brain-map.org/display/api/Downloading+and+Displaying+SVG'
+  slice_ids: 'http://api.brain-map.org/api/v2/data/query.xml?criteria=model::AtlasImage,rma::criteria,[annotated$eqtrue],atlas_data_set(atlases[id$eq{atlas_id}]),rma::options[order$eq%27sub_images.section_number%27][num_rows$eqall]'
+  svg: 'http://api.brain-map.org/api/v2/svg_download/{slice_id}?groups={atlas_svg_groups}'
+  ontology: 'http://api.brain-map.org/api/v2/structure_graph_download/{atlas_id}.xml'
+
+rendering_constants:
+  min_mask_size: 8
+  save_mask_imgs: true
+  include_substructures: true
+  svg_crop_id: 'bbox'
+  inkscape_executable_path: 'C:/Program Files/Inkscape/bin/inkscape'
+  rendering_command: '"{inkscape}" --export-id={export_id} --export-filename="{dst_path}" --export-background-opacity=1.0 --export-height={height} --export-width={width} "{src_path}"'
+  allowed_svg_tag_tails:
+    - 'svg'
+    - 'g'
+    - 'metadata'
+    - 'namedview'
+    - 'RDF'
+    - 'Work'
+    - 'format'
+    - 'type'
+    - 'defs'

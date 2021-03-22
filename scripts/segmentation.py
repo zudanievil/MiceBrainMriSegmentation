@@ -12,7 +12,7 @@ if __name__ == '__main__':
     sys.path.append('..')
 
     import numpy as np
-    from lib import load_config, segmentation_by_atlas
+    from ignore_lib import load_config, segmentation_by_atlas
     load_config(segmentation_by_atlas)
 
     project = pathlib.Path('c:/users/user/desktop/new_segm/cgtg_cgtg')

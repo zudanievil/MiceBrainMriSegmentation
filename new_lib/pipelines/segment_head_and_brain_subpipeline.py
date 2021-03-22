@@ -29,7 +29,7 @@ def get_brain_coordinates(image_info, image_shape):
 
 
 def make_brain_mask(ontology_info, brain_coo, image_shape) -> 'np.ndarray[bool]':
-    mask_path = ontology_info.mask_path(mask_name='Root')
+    mask_path = ontology_info.mask_path_absolute(mask_name='Root')
     mask = ontology_info.open_mask(mask_path)
     mask |= np.flip(mask, axis=1)
     src_coo = linalg_utils.bbox_to_coords(0, mask.shape[0], 0, mask.shape[1])

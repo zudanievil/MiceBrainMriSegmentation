@@ -206,7 +206,7 @@ def join_pickles(folder: pathlib.Path) -> pandas.DataFrame:
 
 
 def drop_duplicates(t: pandas.DataFrame, spec) -> pandas.DataFrame:
-    drop_cols = spec['segmentation']['drop_columns_from_summary']
+    drop_cols = spec['comparison']['drop_columns_from_summary']
     t.drop(columns=drop_cols, inplace=True)
     bspec = spec['batching']
     index_col = ['structure'] + bspec['compare_by'] + bspec['match_by'] + bspec['batch_by']

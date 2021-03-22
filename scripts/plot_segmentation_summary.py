@@ -10,7 +10,7 @@ if __name__ == '__main__':
     root_dir = pathlib.Path(__file__).parent.parent
     sys.path.append('..')
 
-    from lib import load_config, segmentation_by_atlas
+    from ignore_lib import load_config, segmentation_by_atlas
     load_config(segmentation_by_atlas)
 
     projects = pathlib.Path('c:/users/user/desktop/new_segm/')

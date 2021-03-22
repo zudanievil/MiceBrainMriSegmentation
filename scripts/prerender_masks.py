@@ -9,7 +9,7 @@ import pathlib
 import sys
 
 sys.path.append('..')
-from lib import load_config, ontology, project_ops
+from ignore_lib import load_config, ontology, project_ops
 
 if __name__ == '__main__':
     load_config(project_ops, ontology)

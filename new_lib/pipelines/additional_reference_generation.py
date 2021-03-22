@@ -12,9 +12,9 @@ from . import segment_head_and_brain_subpipeline
 
 
 def main(srfi: info_classes.segmentation_result_folder_info_like):
-    # generate_reference_table(srfi)
+    generate_reference_table(srfi)
     plot_reference_table(srfi)
-    # add_references_to_metadata(srfi)
+    add_references_to_metadata(srfi)
 
 
 # ======================================================================

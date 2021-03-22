@@ -1,10 +1,8 @@
 """
-static class that represents calculation.
-call() method is the entry point, see docs of call() method for details.
+
 """
 
-# import pathlib
-# import numpy
+
 import pandas
 from ..core import info_classes
 
@@ -45,4 +43,3 @@ def main(segmentation_result_folder_info: info_classes.segmentation_result_folde
     t = table_of_images(image_folder_info)
     t = split_to_groups(t, spec)
     t.to_csv(rf.batches_path(), sep='\t', na_rep='NA', index=True)
-

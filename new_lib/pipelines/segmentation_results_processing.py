@@ -1,3 +1,4 @@
+import pathlib
 import datetime
 import warnings
 import numpy as np
@@ -65,9 +66,10 @@ def make_kinetics_table(segmentation_result_folder_info: info_classes.segmentati
     srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
     load_path = srfi.table_folder() / 'segm_result.txt'
     save_path = srfi.table_folder() / 'kinetic_table.txt'
+    ref = srfi.specification()['comparison']['normalize_image_by']
 
     t1 = pd.read_csv(load_path, sep='\t')
-    t1.drop(columns=['is_ref', 'reference', 'group',
+    t1.drop(columns=['is_ref', ref, 'group',
                      'mean (p <0.01)', 'mean (p <0.05)',
                      'std (p <0.05)', 'std (p <1)', 'std (p <0.01)',
                      'px (p <0.01)'], inplace=True)
@@ -121,6 +123,10 @@ def make_significance_table(segmentation_result_folder_info: info_classes.segmen
     load_path = srfi.table_folder() / 'kinetic_table.txt'
     save_path = srfi.table_folder() / 'significance_table.txt'
 
+    rt = srfi.ontology_folder_info().ontology_info('').default_tree().getroot()
+    structure_list = lang_utils.list_substructures(rt, structure_list)
+    del rt
+
     # put result into a table
     index_t = pd.DataFrame([e.attrib for e in structure_list])
     index_t.drop(columns=['filename', 'id'], inplace=True)
@@ -153,17 +159,17 @@ def plot_segmentation_results(segmentation_result_folder_info: info_classes.segm
     compare_by = spec['batching']['compare_by'][0]
     pval_thresholds = spec['comparison']['pval_thresholds']
     plot_spec = spec['summary_plot']
+    ont_root = srfi.ontology_folder_info().ontology_info('').default_tree().getroot()
 
     table = pd.read_csv(load_path, sep='\t',
                         index_col=['structure', compare_by])
     structures = np.unique(table.index.get_level_values('structure'))
     for structure in structures:  # todo: add tqdm
-        save_name = structure.replace('/', '_')
-        if save_plots_with_segmentation_images:
-            save_path = lang_utils.find_file(save_name, plot_folder).parent
-        else:
-            save_path = plot_folder
-        save_path /= (save_name + ' plot.png')
+        nodes = lang_utils.get_structure_parents(ont_root, structure)
+        names = [n.attrib['acronym'].replace('/', '_') for n in nodes]
+        names.append(nodes[-1].attrib['name'].replace('/', '_') + ' plot.png')
+        save_path = pathlib.Path('/'.join(names))
+        save_path = plot_folder / save_path
 
         data = table.loc[structure]
         fig, axs = plt.subplots(1, 1, **plot_spec['figure_kwargs'])

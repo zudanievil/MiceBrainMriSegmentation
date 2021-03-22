@@ -5,7 +5,7 @@ if __name__ == '__main__':
     import pathlib
     sys.path.append('..')
 
-    from lib import load_config, project_ops
+    from ignore_lib import load_config, project_ops
     load_config(project_ops)
 
     project = pathlib.Path('c:/users/user/desktop/new_segm/cgtg_c57bl')
