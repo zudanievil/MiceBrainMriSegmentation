@@ -6,21 +6,12 @@ like research projects, masks, etc in a useful way
 
 import yaml
 import shutil
-import urllib.request
 import pathlib
 import numpy as np
 import xml.etree.ElementTree as et
 import PIL
 import typing
-from ..utils import lang_utils
 
-_LOCALS = {
-    'download_slice_ids': 'http://api.brain-map.org/api/v2/data/query.xml?criteria=model::AtlasImage,rma::criteria,'
-                          '[annotated$eqtrue],atlas_data_set(atlases[id$eq{atlas_id}]),'
-                          'rma::options[order$eq%27sub_images.section_number%27][num_rows$eqall]',
-    'download_svg': 'http://api.brain-map.org/api/v2/svg_download/{svg_id}?groups={svg_groups}',
-    'download_ontology': 'http://api.brain-map.org/api/v2/structure_graph_download/{atlas_id}.xml',
-    }
 
 path_like = typing.Union[pathlib.Path, str]
 ontology_folder_info_like = typing.Union['OntologyFolderInfo', path_like]

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from ..core import info_classes
-from ..utils import lang_utils
+from ..utils import miscellaneous_utils
 
 
 def main(segmentation_result_folder_info: info_classes.segmentation_result_folder_info_like,
@@ -124,7 +124,7 @@ def make_significance_table(segmentation_result_folder_info: info_classes.segmen
     save_path = srfi.table_folder() / 'significance_table.txt'
 
     rt = srfi.ontology_folder_info().ontology_info('').default_tree().getroot()
-    structure_list = lang_utils.list_substructures(rt, structure_list)
+    structure_list = miscellaneous_utils.list_substructures(rt, structure_list)
     del rt
 
     # put result into a table
@@ -165,7 +165,7 @@ def plot_segmentation_results(segmentation_result_folder_info: info_classes.segm
                         index_col=['structure', compare_by])
     structures = np.unique(table.index.get_level_values('structure'))
     for structure in structures:  # todo: add tqdm
-        nodes = lang_utils.get_structure_parents(ont_root, structure)
+        nodes = miscellaneous_utils.get_structure_parents(ont_root, structure)
         names = [n.attrib['acronym'].replace('/', '_') for n in nodes]
         names.append(nodes[-1].attrib['name'].replace('/', '_') + ' plot.png')
         save_path = pathlib.Path('/'.join(names))

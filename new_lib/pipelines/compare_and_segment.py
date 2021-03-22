@@ -1,4 +1,3 @@
-import datetime
 import pathlib
 import tqdm
 import numpy
@@ -8,7 +7,7 @@ import skimage.filters
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from ..core import info_classes
-from ..utils import lang_utils
+from ..utils import miscellaneous_utils
 
 
 PLOT_FOLDER_MAX_LENGTH = 100
@@ -194,7 +193,7 @@ def collect_segmentation_results(segmentation_result_folder_info: info_classes.s
     save_path = srfi.table_folder() / 'segm_result.txt'
     t.to_csv(save_path, sep='\t')
     if delete_temporary_folder:
-        lang_utils.delete_folder(temp_folder)
+        miscellaneous_utils.delete_folder(temp_folder)
 
     
 def join_pickles(folder: pathlib.Path) -> pandas.DataFrame:

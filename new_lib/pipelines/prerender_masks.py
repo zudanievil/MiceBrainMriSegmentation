@@ -8,7 +8,7 @@ import numpy
 import datetime
 from xml.etree import ElementTree
 from ..core import info_classes
-from ..utils import lang_utils
+from ..utils import miscellaneous_utils
 
 
 shape_dict_type = typing.Dict[str, typing.Tuple[int, int]]
@@ -43,7 +43,7 @@ def main(ontology_folder_info: info_classes.ontology_folder_info_like,
                 continue
             try:
                 svg_source_path = ontology_info.svg_path()
-                structure_parents = lang_utils.get_structure_parents(structure_tree_root, structure.attrib['name'])
+                structure_parents = miscellaneous_utils.get_structure_parents(structure_tree_root, structure.attrib['name'])
                 png_mask_path = compose_structure_path(ontology_info, structure_parents)
                 png_mask_path.parent.mkdir(exist_ok=True, parents=True)
                 render_structure_mask(svg_source_path, png_mask_path, structure, frame_shape, spec)
@@ -156,10 +156,10 @@ def svg_mask_from_ids(svg_path: pathlib.Path, save_path: pathlib.Path, ids: typi
             elif node.attrib['structure_id'] == spec['svg_crop_id']:
                 node.set('style', 'stroke:none;fill:#000000;fill-opacity:0')
             else:
-                lang_utils.remove_node_xml_from_the_tree(svg_root, node)
+                miscellaneous_utils.remove_node_xml_from_the_tree(svg_root, node)
         except KeyError:
             if not node.tag.endswith(tuple(spec['allowed_svg_tag_tails'])):
-                lang_utils.remove_node_xml_from_the_tree(svg_root, node)
+                miscellaneous_utils.remove_node_xml_from_the_tree(svg_root, node)
     if empty:
         raise EmptyMaskException()
     ElementTree.ElementTree(svg_root).write(save_path,  encoding='utf-8')
