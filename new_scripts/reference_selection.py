@@ -9,7 +9,7 @@ import skimage.exposure as ske
 import scipy.optimize as sco
 import skimage.segmentation as sks
 sys.path.append('..')
-from nn_lib import dataset_preparation
+from ignore_nn_lib import dataset_preparation
 
 
 def gaussian(x, a, mu, sigma):

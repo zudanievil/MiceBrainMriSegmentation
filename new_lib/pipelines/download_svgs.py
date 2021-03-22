@@ -5,7 +5,7 @@ from xml.etree import ElementTree
 from ..core import info_classes
 
 
-def main(ontology_folder_info: info_classes.ontology_folder_info_like):
+def execute_all(ontology_folder_info: info_classes.ontology_folder_info_like):
     ontology_folder_info = info_classes.OntologyFolderInfo(ontology_folder_info)
     download_slice_ids_table(ontology_folder_info)
     download_default_ontology(ontology_folder_info)

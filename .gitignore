@@ -1,5 +1,6 @@
 #python cache:
 **/__pycache__
+**/.ipynb_checkpoints
 # local scripts:
 **/ignore_*
 **/local_*

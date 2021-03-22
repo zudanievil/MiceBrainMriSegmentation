@@ -8,7 +8,7 @@ from ..core import info_classes
 from ..utils import miscellaneous_utils
 
 
-def main(segmentation_result_folder_info: info_classes.segmentation_result_folder_info_like,
+def execute_all(segmentation_result_folder_info: info_classes.segmentation_result_folder_info_like,
          structure_list_for_significance_table=None):
     srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
     refactor_summary(srfi)
