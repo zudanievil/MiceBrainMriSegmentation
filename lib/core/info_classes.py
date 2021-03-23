@@ -86,7 +86,7 @@ class OntologyInfo:
     def frame(self) -> str:
         return self._frame
 
-    def mask_path(self, mask_name: str = 'Root') -> 'pathlib.Path or None':
+    def get_mask_filename(self, mask_name: str = 'Root') -> typing.Union[pathlib.Path, None]:
         """
         Performs linear search in ontology tree.
         :var mask_name must match exactly
@@ -100,6 +100,15 @@ class OntologyInfo:
 
     def masks_folder(self) -> pathlib.Path:
         return self._folder_info.folder() / self._frame
+
+    def mask_path_absolute(self, mask_name: str = 'Root') -> typing.Union[pathlib.Path, None]:
+        """
+        Performs linear search in ontology tree.
+        :var mask_name must match exactly
+        :returns pathlib.Path if structure is found and has 'filename' attribute, else None
+        """
+        p = self.get_mask_filename(mask_name)
+        return self.masks_folder() / p.with_suffix('.png')
 
     @staticmethod
     def open_mask(path: path_like):
