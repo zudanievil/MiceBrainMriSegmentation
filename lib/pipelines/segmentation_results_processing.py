@@ -123,7 +123,7 @@ def make_significance_table(segmentation_result_folder_info: info_classes.segmen
     load_path = srfi.table_folder() / 'kinetic_table.txt'
     save_path = srfi.table_folder() / 'significance_table.txt'
 
-    rt = srfi.ontology_folder_info().ontology_info('').default_tree().getroot()
+    rt = srfi.ontology_folder_info().ontology_info('').default_tree().getroot()  # todo: take this outside
     structure_list = miscellaneous_utils.list_substructures(rt, structure_list)
     del rt
 
@@ -182,3 +182,20 @@ def plot_segmentation_results(segmentation_result_folder_info: info_classes.segm
         fig.savefig(save_path, **plot_spec['savefig_kwargs'])
         plt.close(fig)
         print(datetime.datetime.now(), save_path)
+
+
+# ==================================================================
+def average_the_kinetic_table(segmentation_result_folder_info: info_classes.segmentation_result_folder_info_like,
+                              structure_list=None):
+    warnings.warn(message='average_the_kinetic_table subpipeline have not been generalized '
+                          'for arbitrary filename fields and arbitrary brain structures, please inspect code')
+    # srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
+    srfi = segmentation_result_folder_info
+    load_path = srfi.table_folder() / 'kinetic_table.txt'
+    save_path = srfi.table_folder() / 'kinetic_table_averaged.txt'
+    t = pd.read_csv(load_path, sep='\t')
+    t = t.groupby(['structure']).mean()
+    t.drop(columns=['animal'], inplace=True)
+    if structure_list:
+        t = t.loc[list(structure_list)]
+    t.to_csv(save_path, sep='\t', index=True)

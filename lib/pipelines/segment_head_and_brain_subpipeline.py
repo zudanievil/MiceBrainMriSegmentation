@@ -23,7 +23,7 @@ def get_brain_coordinates(image_info, image_shape):
     brain_bbox = (l[0] + r[0])/2, (l[1] + r[1])/2, l[2], r[3]
     brain_coo = linalg_utils.bbox_to_coords(*brain_bbox)
     angle = - meta['rotation']  # the 'rotation' was intended for rotation of the image
-    center = image_shape[1] / 2 - 1, image_shape[0] / 2 - 1  # order should be as in coords
+    center = image_shape[1] / 2 - 0.5, image_shape[0] / 2 - 0.5  # order should be as in coords
     brain_coo = linalg_utils.rotate_coords(brain_coo, center, angle, degrees=True)
     return brain_coo
 
