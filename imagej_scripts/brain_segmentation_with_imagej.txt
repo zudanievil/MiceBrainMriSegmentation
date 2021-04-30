@@ -1,3 +1,6 @@
+// ImageJ macro guide: https://imagej.nih.gov/ij/developer/macro/macros.html#tools
+// ImageJ macro functions list: https://imagej.nih.gov/ij/developer/macro/functions.html
+
 //vars for macro communication
 var cwd = "";
 var file_list_path = "";
@@ -29,11 +32,12 @@ function getName(i){
     save_name = name;
     }
 
-
+//IMAGE OPENING FUNCTION
 function open32bitImg(){
-    path = image_source_folder + save_name;
-    cmd = "open="+ path + " image=[32-bit Unsigned] width=256 height=256 little-endian";
-    run("Raw...", cmd);
+    path = image_source_folder + save_name; //globals
+    cmd = "Raw..." //for opening bytestring image
+    args = "open="+ path + " image=[32-bit Unsigned] width=256 height=256 little-endian"; //additional arguments
+    run(cmd, args);
     }
 
 
@@ -141,3 +145,7 @@ macro 'print status [o]'{
     i = getPointer();
     print("pointer: " + i);
     }
+
+macro 'show instructions [h]'{
+    print("No instructions for now")
+}

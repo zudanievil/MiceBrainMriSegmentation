@@ -32,19 +32,21 @@ def batches_gen(srfi: info_classes.segmentation_result_folder_info_like, batch_r
     batches = batches.loc[batch_range] if batch_range else batches
     yield len(batches)
     for i in batches.index:
-        yield i, ref_mask, batches.loc[i].to_numpy()
+        yield i, ref_mask, batches.loc[i].to_numpy().astype(str)
 
 
 def get_imgs_metas(sfri: info_classes.segmentation_result_folder_info_like, batch, ref_mask, spec):
     ifi = sfri.image_folder_info()
     metas = []
     imgs = []
-    for name in batch.tolist():
+    for name in batch:
+        if name == 'nan':
+            continue
         ii = ifi.image_info(name)
         metas.append(ii.metadata())
         imgs.append(ii.cropped_image())
     metas = pandas.DataFrame(metas)
-    metas['is_ref'] = ref_mask
+    metas['is_ref'] = ref_mask[batch != 'nan']
     imgs = numpy.stack(imgs, axis=0)
     ref_key = spec['normalize_image_by']
     imgs /= metas[ref_key].to_numpy()[..., numpy.newaxis, numpy.newaxis]
@@ -97,7 +99,7 @@ def get_mask_gen(srfi: info_classes.segmentation_result_folder_info_like,
     rt = oi.tree().getroot()
     for node in rt.iter('structure'):
         fname = node.attrib['filename']
-        mask = oi.open_mask(fname)
+        mask = oi.open_mask_relative(fname)
         yield mask, node.attrib
 
 

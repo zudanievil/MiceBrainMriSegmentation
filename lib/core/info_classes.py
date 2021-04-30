@@ -8,9 +8,9 @@ import yaml
 import shutil
 import pathlib
 import numpy as np
-import xml.etree.ElementTree as et
-import PIL
 import typing
+from xml.etree import ElementTree
+import PIL
 
 
 path_like = typing.Union[pathlib.Path, str]
@@ -116,23 +116,29 @@ class OntologyInfo:
         mask = np.array(mask.getdata(), dtype=np.uint8).reshape((mask.size[1], mask.size[0]))
         return mask > 127
 
+    def open_mask_relative(self, path: path_like):
+        path = (self.masks_folder() / path).with_suffix('.png')
+        mask = PIL.Image.open(path)
+        mask = np.array(mask.getdata(), dtype=np.uint8).reshape((mask.size[1], mask.size[0]))
+        return mask > 127
+
     def tree_path(self) -> pathlib.Path:
         return self._folder_info.onts_folder() / (self._frame + '.xml')
 
     def tree(self):
-        return et.parse(self.tree_path())
+        return ElementTree.parse(self.tree_path())
 
     def svg_path(self) -> pathlib.Path:
         return self._folder_info.svgs_folder() / (self._frame + '.svg')
 
     def svg(self):
-        return et.parse(self.svg_path())
+        return ElementTree.parse(self.svg_path())
 
     def default_tree_path(self) -> pathlib.Path:
         return self._folder_info.onts_folder() / 'default.xml'
 
     def default_tree(self):
-        return et.parse(self.default_tree_path())
+        return ElementTree.parse(self.default_tree_path())
 
 
 class ImageFolderInfo:
@@ -162,7 +168,7 @@ class ImageFolderInfo:
     def raw_image_folder(self):
         return self._folder / 'img_raw'
 
-    def write(self) -> 'files':
+    def write(self):
         assert not self._folder.exists()
         for k, v in self.__class__.__dict__.items():
             if k.endswith('folder') and k not in self.__slots__:
@@ -201,14 +207,17 @@ class ImageFolderInfo:
 class ImageInfo:
     __slots__ = '_folder_info', '_name'
 
-    def __init__(self, folder_info: image_info_like, name: str):
+    def __init__(self, folder_info: image_folder_info_like, name: str):
         self._folder_info = ImageFolderInfo(folder_info)
         self._name = name
+
+    def __repr__(self):
+        return f"{self.__class__}(_folder_info={self.folder_info})" # todo
 
     def name(self) -> str:
         return self._name
 
-    def folder_info(self) -> 'ImageFolderInfo':
+    def folder_info(self) -> ImageFolderInfo:
         return self._folder_info
 
     def raw_image_path(self) -> pathlib.Path:

@@ -19,18 +19,29 @@ def table_of_images(image_folder_info: info_classes.ImageFolderInfo) -> pandas.D
 
 
 def split_to_groups(table: pandas.DataFrame, spec: dict) -> pandas.DataFrame:
-    new_index = spec['compare_by'] + spec['match_by'] + spec['batch_by']
+    # new_index = spec['compare_by'] + spec['match_by'] + spec['batch_by']
+    new_index = table.columns.to_list()
+    new_index.remove('name')
+    table = table.set_index(new_index)[['name', ]].unstack(spec['batch_by'][0])
     reference_value = str(spec['comparison_reference_value'])
-    table = table.set_index(new_index)[['name', ]].unstack(level=-1)
     table.sort_index(axis=0, inplace=True)
     table.columns.rename('is_reference', level=0, inplace=True)
-    ref_table = table.loc[reference_value].rename(columns={'name': True})
-    table = table.drop(index=[reference_value])
+    new_index = spec['compare_by'] + spec['match_by']
+    table.reset_index(inplace=True)
+    table.set_index(new_index, inplace=True)
+    table = table[['name']]
+
+    ref_index = table.index[table.index.get_loc([reference_value])]
+    ref_table = table.loc[ref_index].rename(columns={'name': True})
+    ref_table = ref_table.loc[reference_value]
+    table = table.drop(index=ref_index)
     table.rename(columns={'name': False}, inplace=True)
     idx = table.index.get_level_values(0).unique()
     chunks = []
     for i in idx:
-        chunks.append(pandas.concat([table.loc[i], ref_table], axis=1))
+        x = table.loc[i]
+        y = ref_table.loc[x.index]
+        chunks.append(pandas.concat((x, y), axis=1))
     table = pandas.concat(chunks, axis=0)
     table.reset_index(drop=True, inplace=True)
     return table

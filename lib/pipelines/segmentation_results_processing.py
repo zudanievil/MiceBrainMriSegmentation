@@ -9,12 +9,13 @@ from ..utils import miscellaneous_utils
 
 
 def execute_all(segmentation_result_folder_info: info_classes.segmentation_result_folder_info_like,
-         structure_list_for_significance_table=None):
+         structure_list_for_significance_table = None):
     srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
     refactor_summary(srfi)
     make_kinetics_table(srfi)
     make_significance_table(srfi, structure_list_for_significance_table)
     plot_segmentation_results(srfi)
+    average_the_kinetic_table(srfi, structure_list_for_significance_table)
 
 
 # ==================================================================
@@ -116,22 +117,12 @@ def make_kinetics_table(segmentation_result_folder_info: info_classes.segmentati
 
 # ========================================================================================
 def make_significance_table(segmentation_result_folder_info: info_classes.segmentation_result_folder_info_like,
-                            structure_list: 'list[str]'):
+                            structure_list: 'list[str]' = None):
     warnings.warn(message='make_significance_table subpipeline have not been generalized '
                           'for arbitrary filename fields and arbitrary brain structures, please inspect code')
     srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
     load_path = srfi.table_folder() / 'kinetic_table.txt'
     save_path = srfi.table_folder() / 'significance_table.txt'
-
-    rt = srfi.ontology_folder_info().ontology_info('').default_tree().getroot()  # todo: take this outside
-    structure_list = miscellaneous_utils.list_substructures(rt, structure_list)
-    del rt
-
-    # put result into a table
-    index_t = pd.DataFrame([e.attrib for e in structure_list])
-    index_t.drop(columns=['filename', 'id'], inplace=True)
-    index_t.rename(columns={'name': 'structure'}, inplace=True)
-    index_t.set_index('structure', inplace=True)
 
     # load kinetic table, extract useful parts
     t = pd.read_csv(load_path, sep='\t')
@@ -142,9 +133,11 @@ def make_significance_table(segmentation_result_folder_info: info_classes.segmen
     v_max_on = t[t['structure'] == 'Olfactory Nerve']  # todo
     v_max_on = v_max_on.set_index('animal')['V_max']  # todo
     v_max_on.name = 'V_max Olfactory Nerve'  # todo
+
     # join tables
-    t2 = pd.concat([index_t, sign_pix_t], axis=1, join='inner').T
-    t2 = pd.concat([t2, v_max_on, s_max_mob], axis=1)
+    if structure_list is not None:
+        sign_pix_t = sign_pix_t.loc[list(structure_list)]
+    t2 = pd.concat([sign_pix_t.T, v_max_on, s_max_mob], axis=1)
     t2.to_csv(save_path, sep='\t')
 
 
@@ -189,7 +182,7 @@ def average_the_kinetic_table(segmentation_result_folder_info: info_classes.segm
                               structure_list=None):
     warnings.warn(message='average_the_kinetic_table subpipeline have not been generalized '
                           'for arbitrary filename fields and arbitrary brain structures, please inspect code')
-    # srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
+    srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
     srfi = segmentation_result_folder_info
     load_path = srfi.table_folder() / 'kinetic_table.txt'
     save_path = srfi.table_folder() / 'kinetic_table_averaged.txt'

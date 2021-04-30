@@ -44,14 +44,14 @@ def main(ontology_folder_info: info_classes.ontology_folder_info_like,
             try:
                 svg_source_path = ontology_info.svg_path()
                 structure_parents = miscellaneous_utils.get_structure_parents(structure_tree_root, structure.attrib['name'])
-                png_mask_path = compose_structure_path(ontology_info, structure_parents)
-                png_mask_path.parent.mkdir(exist_ok=True, parents=True)
-                render_structure_mask(svg_source_path, png_mask_path, structure, frame_shape, spec)
-                structure.attrib['filename'] = png_mask_path.as_posix()
+                mask_path_rel, mask_path_abs = compose_structure_path(ontology_info, structure_parents)
+                mask_path_abs.parent.mkdir(exist_ok=True, parents=True)
+                render_structure_mask(svg_source_path, mask_path_abs, structure, frame_shape, spec)
+                structure.attrib['filename'] = mask_path_rel.as_posix()
                 previous_structure_not_found = False
             except EmptyMaskException:
                 structure_parents[-2].remove(structure)  # -1 is the structure itself
-                maybe_remove_residual_paths(png_mask_path)
+                maybe_remove_residual_paths(mask_path_abs)
                 previous_structure_not_found = True
             previous_inspected_structure_level = structure_level
         print(f"\nTotal found structures {len(tuple(structure_tree_root.iter('structure')))}")
@@ -88,12 +88,11 @@ def assert_no_collisions(ontology_folder_info: info_classes.OntologyFolderInfo,
 
 
 def compose_structure_path(ontology_info: info_classes.OntologyInfo,
-                           structure_parents: typing.List[ElementTree.Element]) -> pathlib.Path:
+                           structure_parents: typing.List[ElementTree.Element]) -> (pathlib.Path, pathlib.Path):
     acronyms = [s.attrib['acronym'] for s in structure_parents]
-    path = pathlib.Path('/'.join(acronyms))
-    path = ontology_info.masks_folder() / path
-    path = path / (structure_parents[-1].attrib['name'] + '.png')
-    return path
+    rel_p = pathlib.Path('/'.join(acronyms)) / structure_parents[-1].attrib['name']
+    abs_p = (ontology_info.masks_folder() / rel_p).with_suffix('.png')
+    return rel_p, abs_p
 
 
 def maybe_remove_residual_paths(png_mask_path: pathlib.Path):
