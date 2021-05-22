@@ -17,4 +17,4 @@ dependencies:
 #  - opencv=3.4.*
   - pip=20.1.*
   - pip:
-    - scipy==1.4.1
+    - scipy==1.4.*

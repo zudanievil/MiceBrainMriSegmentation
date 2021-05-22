@@ -164,7 +164,7 @@ def main(segmentation_result_folder_info: info_classes.segmentation_result_folde
     spec = srfi.specification()['comparison']
     mask_permutation = load_mask_permutation(srfi)
     bgen = batches_gen(srfi, batch_range)
-    n_batches = bgen.__next__()
+    n_batches = next(bgen)
     progress_bar = tqdm.tqdm(leave=False, total=n_batches)
     for batch_no, ref_mask, batch in bgen:
         progress_bar.set_postfix_str(str(batch_no))
