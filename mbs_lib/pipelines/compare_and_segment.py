@@ -49,7 +49,10 @@ def get_imgs_metas(sfri: info_classes.segmentation_result_folder_info_like, batc
     metas['is_ref'] = ref_mask[batch != 'nan']
     imgs = numpy.stack(imgs, axis=0)
     ref_key = spec['normalize_image_by']
-    imgs /= metas[ref_key].to_numpy()[..., numpy.newaxis, numpy.newaxis]
+    # imgs /= metas[ref_key].to_numpy()[..., numpy.newaxis, numpy.newaxis]  # old way of normalization
+    hm = metas['ER_head_median'].to_numpy()[..., numpy.newaxis, numpy.newaxis]
+    std = metas['ER_image_std'].to_numpy()[..., numpy.newaxis, numpy.newaxis]
+    imgs = (imgs - hm)/std
     return imgs, metas
 
 
