@@ -78,7 +78,7 @@ class OntologyInfo:
 
     def __init__(self, folder_info: ontology_folder_info_like, frame: str):
         self._folder_info = OntologyFolderInfo(folder_info)
-        self._frame = frame
+        self._frame = str(frame)
 
     def folder_info(self) -> OntologyFolderInfo:
         return self._folder_info
@@ -212,7 +212,7 @@ class ImageInfo:
         self._name = name
 
     def __repr__(self):
-        return f"{self.__class__}(_folder_info={self.folder_info})" # todo
+        return f"{self.__class__}(_folder_info={self.folder_info().folder()})"  # todo
 
     def name(self) -> str:
         return self._name

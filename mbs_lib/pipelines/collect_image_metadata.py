@@ -40,7 +40,7 @@ def main(img_folder: info_classes.image_folder_info_like) -> 'list[pathlib.Path]
     meta_destination_folder = img_folder.metadata_folder()
     not_found_list = []
     for fname in fname_gen(img_folder):
-        print(fname)
+        # print(fname)
         meta = read_metadata_chuncks(meta_source_folder / fname, metadata_keys, not_found_list)
         meta.update(zip(fname_fields, fname.split('_')))
         save_to = meta_destination_folder / (fname + '.yml')

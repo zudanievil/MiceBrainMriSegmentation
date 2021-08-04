@@ -31,7 +31,7 @@ def split_to_groups(table: pandas.DataFrame, spec: dict) -> pandas.DataFrame:
     table.set_index(new_index, inplace=True)
     table = table[['name']]
 
-    ref_index = table.index[table.index.get_loc([reference_value])]
+    ref_index = table.index[table.index.get_loc(reference_value)]
     ref_table = table.loc[ref_index].rename(columns={'name': True})
     ref_table = ref_table.loc[reference_value]
     table = table.drop(index=ref_index)

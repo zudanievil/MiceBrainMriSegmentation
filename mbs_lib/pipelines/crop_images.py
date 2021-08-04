@@ -35,7 +35,7 @@ def main(image_folder_info: info_classes.image_folder_info_like, save_png_previe
     image_folder_info = info_classes.ImageFolderInfo(image_folder_info)
     frame_shapes = image_folder_info.specification()['cropped_image_shapes']
     for image_info in image_folder_info:
-        print(image_info.image_path())
+        # print(image_info.image_path())
         image = image_info.image()
         meta = image_info.metadata()
         image = crop_rotate_image(image, meta, frame_shapes)
