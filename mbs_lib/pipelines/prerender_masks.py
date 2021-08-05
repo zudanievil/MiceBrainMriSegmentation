@@ -22,6 +22,13 @@ class EmptyMaskException(Exception):
 def main(ontology_folder_info: info_classes.ontology_folder_info_like,
          image_folder_info: info_classes.image_folder_info_like,
          frames: typing.List[str] = None):
+    """
+    This pipeline constructs grayscale png masks
+    from Allen Brain Institute atlas sections.
+    :param image_folder_info is needed for `frame_shapes` entry of the image folder configuration.
+    :param frames: if not None, masks will be rendered for specified frames (sections) only. This
+    allows parallelization of rendering process.
+    """
     ontology_folder_info = info_classes.OntologyFolderInfo(ontology_folder_info)
     image_folder_info = info_classes.ImageFolderInfo(image_folder_info)
     frame_shapes = get_frame_shapes_dict(frames, ontology_folder_info, image_folder_info)
@@ -62,6 +69,7 @@ def main(ontology_folder_info: info_classes.ontology_folder_info_like,
 def get_frame_shapes_dict(frames: maybe_string_collection,
                           ontology_folder_info: info_classes.OntologyFolderInfo,
                           image_folder_info: info_classes.ImageFolderInfo) -> shape_dict_type:
+    """loads shape dict, but only for the specified frames"""
     available_frames = set(ontology_folder_info.frames())
     if frames is not None:
         frames = set(frames)
@@ -77,6 +85,7 @@ def get_frame_shapes_dict(frames: maybe_string_collection,
 
 def assert_no_collisions(ontology_folder_info: info_classes.OntologyFolderInfo,
                          frame_shapes: shape_dict_type):
+    """checks that no prerendered structure masks exist for sections in frame shapes"""
     folder = ontology_folder_info.folder()
     collisions = []
     for frame in frame_shapes:
@@ -89,6 +98,8 @@ def assert_no_collisions(ontology_folder_info: info_classes.OntologyFolderInfo,
 
 def compose_structure_path(ontology_info: info_classes.OntologyInfo,
                            structure_parents: typing.List[ElementTree.Element]) -> (pathlib.Path, pathlib.Path):
+    """makes path for structure.
+    :returns path relative to atlas section folder; absolute path"""
     acronyms = [s.attrib['acronym'] for s in structure_parents]
     rel_p = pathlib.Path('/'.join(acronyms)) / structure_parents[-1].attrib['name']
     abs_p = (ontology_info.masks_folder() / rel_p).with_suffix('.png')
@@ -96,6 +107,10 @@ def compose_structure_path(ontology_info: info_classes.OntologyInfo,
 
 
 def maybe_remove_residual_paths(png_mask_path: pathlib.Path):
+    """
+    removes png_mask_path, corresponding .svg temp file and folder they are in.
+    if some paths do not exist, skips them without any errors
+    """
     paths = (
         png_mask_path,
         png_mask_path.with_suffix('.svg'),
@@ -124,16 +139,20 @@ def save_structure_tree(structure_tree_root: ElementTree.Element,
 
 def render_structure_mask(svg_source_path: pathlib.Path, png_mask_path: pathlib.Path,
                           structure: ElementTree.Element, frame_shape: (int, int), spec: dict):
-    ids = get_structure_ids(structure, spec)
+    """function that does whole rendering process"""
     svg_mask_path = png_mask_path.with_suffix('.svg')
-    svg_mask_from_ids(svg_source_path, svg_mask_path, ids, spec)
-    svg_mask_to_png(svg_mask_path, png_mask_path, frame_shape, spec)
-    png_to_grayscale_png(png_mask_path, png_mask_path, spec)
+    ids = get_structure_ids(structure, spec['include_substructures'])
+    svg_mask_from_ids(svg_source_path, svg_mask_path, ids, spec['svg_crop_id'], tuple(spec['allowed_svg_tag_tails']))
+    svg_mask_to_png(
+        svg_mask_path, png_mask_path, frame_shape,
+        spec['inkscape_executable_path'], spec['svg_crop_id'], spec['rendering_command'],)
+    png_to_grayscale_png(png_mask_path, png_mask_path, spec['min_mask_size'])
     svg_mask_path.unlink()
 
 
-def get_structure_ids(structure: ElementTree.Element, spec: dict) -> typing.Set[str]:
-    if spec['include_substructures']:
+def get_structure_ids(structure: ElementTree.Element, include_substructures: bool) -> typing.Set[str]:
+    """gets ids for structures from the tree node"""
+    if include_substructures:
         ids = []
         for substructure in structure.iter('structure'):
             ids.append(substructure.attrib['id'])
@@ -142,7 +161,20 @@ def get_structure_ids(structure: ElementTree.Element, spec: dict) -> typing.Set[
     return set(ids)
 
 
-def svg_mask_from_ids(svg_path: pathlib.Path, save_path: pathlib.Path, ids: typing.Set[str], spec: dict):
+def svg_mask_from_ids(
+        svg_path: pathlib.Path,
+        save_path: pathlib.Path,
+        ids: typing.Set[str],
+        crop_id: str,
+        allowed_tag_tails: typing.Tuple[str],
+        ) -> None:
+    """
+    Produces temporary svg file (from a copy of atlas section) with only relevant parts left.
+    Irrelevant svg objects are removed, background is set to black, remaining objects -- to white.
+    :param ids: ids of structures that will be included
+    :param crop_id: id of svg object that will serve as a bounding box (usually it's a rectangle)
+    :param allowed_tag_tails: tuple of xml tag ends, that have no graphical representation
+    """
     svg_root = ElementTree.parse(svg_path).getroot()
     empty = True
     for node in tuple(svg_root.iter()):  # tree iterator misbehaves if you modify the tree inside the loop
@@ -152,25 +184,34 @@ def svg_mask_from_ids(svg_path: pathlib.Path, save_path: pathlib.Path, ids: typi
             if node.attrib['structure_id'] in ids:
                 node.set('style', 'stroke:none;fill:#ffffff;fill-opacity:1')
                 empty = False
-            elif node.attrib['structure_id'] == spec['svg_crop_id']:
+            elif node.attrib['structure_id'] == crop_id:
                 node.set('style', 'stroke:none;fill:#000000;fill-opacity:0')
             else:
                 miscellaneous_utils.remove_node_xml_from_the_tree(svg_root, node)
         except KeyError:
-            if not node.tag.endswith(tuple(spec['allowed_svg_tag_tails'])):
+            if not node.tag.endswith(allowed_tag_tails):
                 miscellaneous_utils.remove_node_xml_from_the_tree(svg_root, node)
     if empty:
         raise EmptyMaskException()
     ElementTree.ElementTree(svg_root).write(save_path,  encoding='utf-8')
 
 
-def svg_mask_to_png(load_path: pathlib.Path, save_path: pathlib.Path, shape: (int, int), spec: dict):
-    cmd = spec['rendering_command'].format(
-        inkscape=spec['inkscape_executable_path'], export_id=spec['svg_crop_id'],
+def svg_mask_to_png(
+        load_path: pathlib.Path,
+        save_path: pathlib.Path,
+        shape: (int, int),
+        inkscape_exe: str,
+        crop_id: str,
+        rendering_command: str,
+        ) -> None:
+    """
+    Uses Inkscape CLI to render svg. This produces an RGB png image.
+    """
+    cmd = rendering_command.format(
+        inkscape=inkscape_exe, export_id=crop_id,
         src_path=load_path, dst_path=save_path, height=shape[0], width=shape[1])
-    for i in range(3):
-        try:  # after inkscape 1.0 update, sometimes process does not exit,
-            # although render appears to be normal, it's good to be sure that it's complete
+    for i in range(3):  # in case rendering fails because of some internal error (had this problem several times)
+        try:
             process = subprocess.Popen(cmd)
             process.wait(10)
             process.kill()
@@ -184,12 +225,16 @@ def svg_mask_to_png(load_path: pathlib.Path, save_path: pathlib.Path, shape: (in
 
 
 def png_to_grayscale_png(load_path: pathlib.Path, save_path: pathlib.Path,
-                         spec: dict, check_mask_size: bool = True):
+                         min_mask_size: typing.Optional[int] = None):
+    """
+    Converts a normal png to grayscale, because we need 1 channel only.
+    Checks if mask has enough pixels
+    """
     img = PIL.Image.open(load_path)
     img.load()
     img = img.convert('L')
-    if check_mask_size:
+    if min_mask_size is not None:
         mask = numpy.array(img.getdata(), dtype=numpy.uint8).reshape((img.size[1], img.size[0]))
-        if (mask > 127).sum() < spec['min_mask_size']:
+        if (mask > 127).sum() < min_mask_size:
             raise EmptyMaskException
     img.save(save_path)
