@@ -70,6 +70,7 @@ def download_default_ontology(ontology_folder_info: info_classes.ontology_folder
     new_root = ElementTree.Element('blank_node')
     _recursively_refactor_default_ontology_node(new_root, old_root)
     ElementTree.ElementTree(new_root[0]).write(save_path, encoding='utf8')
+    print(f"default ontology written to {save_path}")
 
 
 def _recursively_refactor_default_ontology_node(new_node: ElementTree.Element, old_node: ElementTree.Element,
