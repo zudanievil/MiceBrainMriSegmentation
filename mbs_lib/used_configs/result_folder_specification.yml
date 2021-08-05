@@ -38,7 +38,7 @@ comparison:
     - ER_histogram_bg_peak
     - ER_image_mean
     - ER_image_median
-    - ER_image_std
+#    - ER_image_std
   pvalue_smoothing_kwargs:
     sigma: 1
     preserve_range: True

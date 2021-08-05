@@ -1,4 +1,5 @@
 import numpy
+# TODO: import tqdm
 import pathlib
 import matplotlib.pyplot
 import skimage.transform
@@ -6,8 +7,8 @@ import skimage.transform
 from ..core import info_classes
 from ..utils import linalg_utils
 
-
-_LOCALS = {
+# todo: rename "specifications" to "config"
+_LOCALS = {  # TODO: add this to config
     'skimage_transformations_kwargs': {
         'order': 3,
         'preserve_range': True,

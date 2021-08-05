@@ -4,6 +4,8 @@ import numpy
 from xml.etree import ElementTree
 from ..core import info_classes
 
+# todo: annotate
+
 
 def execute_all(ontology_folder_info: info_classes.ontology_folder_info_like):
     ontology_folder_info = info_classes.OntologyFolderInfo(ontology_folder_info)
