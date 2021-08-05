@@ -38,11 +38,13 @@ def crop_rotate_image(
 
 def main(image_folder_info: info_classes.image_folder_info_like, save_png_previews: bool = True) -> None:
     """
-    crops brain images and rescales them to specified shapes (see `cropped_image_shapes` in image folder configuration)
-    resizing is hard-coded to depend on `frame` metadata entry, since `frame` is essentially
+    Crops brain images and rescales them to specified shapes (see `cropped_image_shapes` in image folder configuration).
+    Resizing is hard-coded to depend on `frame` metadata entry, since `frame` is essentially
     a named brain section coordinate, and brain size varies with frame only.
-    each hemisphere is resized individually, which means that left half of the image contains only left hemisphere
+    Each hemisphere is resized individually, which means that left half of the image contains only left hemisphere
     and right half of the image is precisely right hemisphere.
+    Uses `image_transform_interpolation` from the image folder configuration file to select interpolation order
+    and value range preservation options.
     :param save_png_previews: saves a black and white .png preview of .npy file for visual inspection, debugging
     """
     image_folder_info = info_classes.ImageFolderInfo(image_folder_info)
