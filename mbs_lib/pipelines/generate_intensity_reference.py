@@ -19,6 +19,13 @@ def main(srfi: info_classes.segmentation_result_folder_info_like):
 
 # ======================================================================
 def generate_reference_table(srfi: info_classes.segmentation_result_folder_info_like):
+    """
+    first, obtains mask of brain and head boolean masks
+    for the image using `pipelines.segment_head_and_brain_subpipeline.main` function
+    then computes different functions over these masks
+    (see `pipelines.generate_intensity_reference.get_metrics_over_masks`).
+    saves table to "additional_references/ref_table.txt" file in results folder.
+    """
     save_folder = srfi.folder() / 'additional_references'
     save_folder.mkdir(exist_ok=True)
     image_folder_info = srfi.image_folder_info()
@@ -38,13 +45,18 @@ def generate_reference_table(srfi: info_classes.segmentation_result_folder_info_
         img = image_info.image()
         chuncks.update(get_metrics_over_masks(brain_mask, head_mask, img))
         stats.append(chuncks)
+    pb.close()
     stats = pd.DataFrame(stats)
     stats.set_index(['name'], inplace=True)
     stats.to_csv(save_folder/'ref_table.txt', sep='\t', index=True)
 
 
-def get_metrics_over_masks(brain_mask, head_mask, img):
-    img = img.astype(float)  # for some reason ndi functions over int images give wierd results
+def get_metrics_over_masks(brain_mask: "np.ndarray[bool]", head_mask: "np.ndarray[bool]", img: np.ndarray):
+    """
+    filters desired regions of the image using `MASKS` constant,
+    then computes different metrics over the masked image using `METRICS` constant
+    """
+    img = img.astype(float)  # for some reason ndi functions over int images give weird results
     result = {}
     for mask_name in MASKS:
         values = MASKS[mask_name](img, brain_mask, head_mask)
@@ -70,8 +82,13 @@ MASKS = {
     }
 
 
-def mri_bg_peak(img):
-    # this function, unlike others, is 'aware' of data specifics.
+def mri_bg_peak(img: np.ndarray) -> float:
+    """
+    This function fits a gaussian onto image intensity histogram peak (the one, corresponding to background).
+    this may be a better normalization metric than mean or standard deviation.
+    This function, unlike others, is 'aware' of intensity distribution specifics.
+    :returns: peak position (background intensity)
+    """
     img_truncated = img[img < 0.3*np.max(img)].astype(float)  # we truncate the long tail of high values
     hist_y, hist_x = ske.histogram(img_truncated, nbins=200)
     peak_idx = hist_y[2:].argmax() + 2  # sometimes 1st bin values 'outweigh' the gaussian
@@ -79,7 +96,11 @@ def mri_bg_peak(img):
     return fit_params[1]  # fit_params == (a, mu, sigma)
 
 
-def fit_gaussian_on_histogram_peak(x, y, peak_idx):
+def fit_gaussian_on_histogram_peak(x: "np.ndarray[float]", y: "np.ndarray[float]", peak_idx: int):
+    """
+    procedure of fitting scaled gaussian with least-squares optimizer.
+    :param peak_idx: index of y near the peak that is being interpolated.
+    """
     # get init estimates
     a_init = y[peak_idx]
     mu_init = x[peak_idx]
@@ -98,12 +119,19 @@ def fit_gaussian_on_histogram_peak(x, y, peak_idx):
     return fit_params
 
 
-def gaussian(x, a, mu, sigma):
+def gaussian(x: "np.ndarray[float]", a: float, mu: float, sigma: float):
+    """
+    computes gaussian PDF
+    :returns: a*exp(  -({x-mu} /sigma)^2  )
+    """
     return a * np.exp(- ((x - mu) / sigma) ** 2)
 
 
 # ==================================================================
 def plot_reference_table(srfi: info_classes.segmentation_result_folder_info_like):
+    """
+    plots the values from the reference table, saves them to the same folder
+    """
     save_folder = srfi.folder() / 'additional_references'
     image_folder_info = srfi.image_folder_info()
     fname_fields = image_folder_info.specification()['file_name_fields']
@@ -111,12 +139,14 @@ def plot_reference_table(srfi: info_classes.segmentation_result_folder_info_like
     batch_spec = srfi.specification()['batching']
     metrics = set(t.columns)
     metrics.difference_update(set(fname_fields))
+
+    plt.ioff()
     pb = tqdm.tqdm(leave=False, total=len(metrics))
     pb.set_description('plotting reference table')
-    plt.ioff()
     for metric in metrics:
         pb.update()
         pb.set_postfix_str(metric)
+
         t2 = t[[metric, *batch_spec['compare_by'], *batch_spec['match_by']]]
         t2 = t2.groupby(by=[*batch_spec['match_by'], *batch_spec['compare_by']]).mean()
         t2 = t2.unstack(batch_spec['compare_by'][0])
@@ -131,11 +161,16 @@ def plot_reference_table(srfi: info_classes.segmentation_result_folder_info_like
         plt.title(metric)
         plt.savefig(save_folder / (metric + '.png'), dpi=96, format='png')
         plt.close()
+    pb.close()
     plt.ion()
 
 
 # =======================================================================
 def add_references_to_metadata(srfi: info_classes.segmentation_result_folder_info_like):
+    """
+    Adds values from reference table to corresponding metadata files.
+    This is a rather bad decision, we'll probably fix this in the future.
+    """
     save_folder = srfi.folder() / 'additional_references'
     image_folder_info = srfi.image_folder_info()
     fname_fields = image_folder_info.specification()['file_name_fields']
@@ -153,3 +188,4 @@ def add_references_to_metadata(srfi: info_classes.segmentation_result_folder_inf
         meta.update(ref)
         with image_info.metadata_path().open('wt') as f:
             yaml.safe_dump(meta, f)
+    pb.close()
