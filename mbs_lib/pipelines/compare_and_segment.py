@@ -12,7 +12,6 @@ from ..utils import miscellaneous_utils
 
 
 PLOT_FOLDER_MAX_LENGTH = 100
-MIN_SIGN_PIXELS = 2
 
 
 def get_plot_folder(srfi: info_classes.segmentation_result_folder_info_like) -> pathlib.Path:

@@ -3,6 +3,7 @@ file_name_fields: #image or metadata name consists of the field values separated
   - hour
   - animal
   - frame
+
 metadata_keys:
   rotation:
     dtype: 'float'
@@ -37,6 +38,7 @@ metadata_keys:
       - 4
       - 7
       - 6
+
 cropped_image_shapes:  #this is used to resize cropped images and pre-render masks
 #  frame:
 #   - height
@@ -98,3 +100,7 @@ cropped_image_shapes:  #this is used to resize cropped images and pre-render mas
   f9:
     - 80
     - 130
+
+image_transform_interpolation: #keyword arguments for skimage.transform.rotate/skimage.transform.scale
+  order: 3
+  preserve_range: true
