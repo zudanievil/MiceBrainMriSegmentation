@@ -10,15 +10,23 @@ they nave very little initialization logic. However, large portion of their meth
 
 import yaml
 import shutil
-import pathlib
+from pathlib import Path
 import numpy as np
 import typing
 from xml.etree import ElementTree
 import PIL
 from copy import deepcopy
 
+# constants
+_DEFAULT_FOLDER_CONFIGURATIONS_STORAGE = Path(__file__).parent.parent / 'folder_configurations_default'
+_ONTOLOGY_FOLDER_CONFIGURATION_NAME = "ontology_folder_configuration.yml"
+_IMAGE_FOLDER_CONFIGURATION_NAME = "image_folder_configuration.yml"
+_RESULTS_FOLDER_CONFIGURATION_NAME = "results_folder_configuration.yml"
+_STRING_REPLACED_WITH_IMAGE_FOLDER = "replace with image folder absolute path"
+_STRING_REPLACED_WITH_ONTOLOGY_FOLDER = "replace with ontology folder absolute path"
 
-path_like = typing.Union[pathlib.Path, str]
+# type aliases
+path_like = typing.Union[Path, str]
 ontology_folder_info_like = typing.Union['OntologyFolderInfo', path_like]
 ontology_info_like = typing.Union['OntologyInfo', path_like]
 image_folder_info_like = typing.Union['ImageFolderInfo', path_like]
@@ -26,7 +34,6 @@ image_info_like = typing.Union['ImageInfo', path_like]
 segmentation_result_folder_info_like = typing.Union['SegmentationResultFolderInfo', path_like]
 image_info_iterator_type = typing.Iterator['ImageInfo']
 ontology_info_iterator_type = typing.Iterator['OntologyInfo']
-default_forms_folder = pathlib.Path(__file__).parent.parent / 'default_specifications'
 
 
 class OntologyFolderInfo:
@@ -44,26 +51,35 @@ class OntologyFolderInfo:
         """
         self._folder = deepcopy(folder._folder) \
             if isinstance(folder, self.__class__) \
-            else pathlib.Path(folder)
+            else Path(folder)
 
     def __repr__(self) -> str:
         return f"{self.__class__}({self._folder.absolute().as_posix()})"
 
-    def folder(self) -> pathlib.Path:
+    def folder(self) -> Path:
         """:returns root folder"""
         return self._folder
 
-    def onts_folder(self) -> pathlib.Path:
+    def onts_folder(self) -> Path:
         """:returns folder with `.xml` ontologies"""
         return self._folder / "onts"
 
-    def svgs_folder(self) -> pathlib.Path:
+    def svgs_folder(self) -> Path:
         """:returns folder with atlas `.svg` sections"""
         return self._folder / "svgs"
 
     def ontology_info(self, frame: str) -> 'OntologyInfo':
         """shorthand for `OntologyInfo` initialization"""
         return OntologyInfo(self, frame)
+
+    def configuration_path(self) -> Path:
+        return self._folder / _ONTOLOGY_FOLDER_CONFIGURATION_NAME
+
+    def configuration(self) -> dict:
+        """reads and :returns `.yml` config file"""
+        with self.configuration_path().open('rt') as f:
+            s = yaml.safe_load(f.read())
+        return s
 
     def write(self) -> None:
         """A preferred way to create folder and files,
@@ -74,16 +90,9 @@ class OntologyFolderInfo:
         for k, v in self.__class__.__dict__.items():
             if k.endswith('folder') and k not in self.__slots__:
                 v(self).mkdir(parents=True, exist_ok=True)
-        form_src = default_forms_folder / 'ontology_folder_specification.yml'
-        form_dst = self._folder / 'ontology_folder_specification.yml'
+        form_src = _DEFAULT_FOLDER_CONFIGURATIONS_STORAGE / _ONTOLOGY_FOLDER_CONFIGURATION_NAME
+        form_dst = self.configuration_path()
         shutil.copy(form_src, form_dst)
-
-    def specification(self) -> dict:
-        """reads and :returns `.yml` config file"""
-        p = self._folder / 'ontology_folder_specification.yml'
-        with p.open('rt') as f:
-            s = yaml.safe_load(f.read())
-        return s
 
     def frames(self) -> typing.List[str]:
         """:returns all the file names from the `self.svgs_folder()`"""
@@ -124,27 +133,27 @@ class OntologyInfo:
         """:returns frame (section) name"""
         return self._frame
 
-    def get_mask_filename(self, mask_name: str = 'Root') -> typing.Union[pathlib.Path, None]:
+    def get_mask_filename(self, mask_name: str = 'Root') -> typing.Union[Path, None]:
         """
         Performs linear search in ontology tree.
         :var mask_name must match exactly
-        :returns pathlib.Path if structure is found and has 'filename' attribute, else None
+        :returns Path if structure is found and has 'filename' attribute, else None
         """
         rt = self.tree().getroot()
         for s in rt.iter('structure'):
             if s.attrib['name'] == mask_name:
                 fn = s.attrib['filename']
-                return pathlib.Path(fn) if fn else None
+                return Path(fn) if fn else None
 
-    def masks_folder(self) -> pathlib.Path:
+    def masks_folder(self) -> Path:
         """:returns folder where the masks are stored"""
         return self._folder_info.folder() / self._frame
 
-    def mask_path_absolute(self, mask_name: str = 'Root') -> typing.Optional[pathlib.Path]:
+    def mask_path_absolute(self, mask_name: str = 'Root') -> typing.Optional[Path]:
         """
         Performs linear search in ontology tree.
         :var mask_name must match exactly
-        :returns pathlib.Path if structure is found and has 'filename' attribute, else None
+        :returns Path if structure is found and has 'filename' attribute, else None
         """
         p = self.get_mask_filename(mask_name)
         return self.masks_folder() / p.with_suffix('.png')
@@ -168,7 +177,7 @@ class OntologyInfo:
         path = (self.masks_folder() / path).with_suffix('.png')
         return self.open_mask(path)
 
-    def tree_path(self) -> pathlib.Path:
+    def tree_path(self) -> Path:
         """:returns a path to the `.xml` ontology of the section"""
         return self._folder_info.onts_folder() / (self._frame + '.xml')
 
@@ -176,7 +185,7 @@ class OntologyInfo:
         """reads and :returns ontology of the section"""
         return ElementTree.parse(self.tree_path())
 
-    def svg_path(self) -> pathlib.Path:
+    def svg_path(self) -> Path:
         """:returns path to the `.svg` atlas section"""
         return self._folder_info.svgs_folder() / (self._frame + '.svg')
 
@@ -184,7 +193,7 @@ class OntologyInfo:
         """reads and :returns content of `.svg` section"""
         return ElementTree.parse(self.svg_path())
 
-    def default_tree_path(self) -> pathlib.Path:
+    def default_tree_path(self) -> Path:
         """:returns path to a default `.xml` section ontology
          (downloaded from Allen Institute)"""
         return self._folder_info.onts_folder() / 'default.xml'
@@ -207,55 +216,55 @@ class ImageFolderInfo:
         """
         self._folder = deepcopy(folder._folder) \
             if isinstance(folder, self.__class__) \
-            else pathlib.Path(folder)
+            else Path(folder)
 
     def __repr__(self) -> str:
         return f"{self.__class__}({self._folder.absolute().as_posix()})"
 
-    def folder(self) -> pathlib.Path:
+    def folder(self) -> Path:
         """:returns the folder passed on initialization"""
         return self._folder
 
-    def image_folder(self) -> pathlib.Path:
+    def image_folder(self) -> Path:
         """:returns folder where uncropped `.npy` images are stored"""
-        return self._folder / 'img'
+        return self._folder / "img"
 
-    def metadata_folder(self) -> pathlib.Path:
+    def metadata_folder(self) -> Path:
         """:returns folder that stores image metadata"""
-        return self._folder / 'meta'
+        return self._folder / "meta"
 
-    def cropped_image_folder(self) -> pathlib.Path:
+    def cropped_image_folder(self) -> Path:
         """:returns folder with cropped `.npy` images"""
-        return self._folder / 'img_cropped'
+        return self._folder / "img_cropped"
 
-    def pre_metadata_folder(self) -> pathlib.Path:
+    def pre_metadata_folder(self) -> Path:
         """:returns folder that stores simple text files (later turned to metadata)"""
-        return self._folder / 'pre_meta'
+        return self._folder / "pre_meta"
 
-    def raw_image_folder(self) -> pathlib.Path:
-        return self._folder / 'img_raw'
+    def raw_image_folder(self) -> Path:
+        return self._folder / "img_raw"
+
+    def configuration_path(self) -> Path:
+        """:returns path to the image folder config"""
+        return self._folder / _IMAGE_FOLDER_CONFIGURATION_NAME
+
+    def configuration(self) -> dict:
+        """reads and returns this image folder config"""
+        with self.configuration_path().open('rt') as f:
+            spec = yaml.safe_load(f.read())
+        return spec
 
     def write(self) -> None:
         """preferred way of writing the folder that this class represents"""
         assert not self._folder.exists()
         for k, v in self.__class__.__dict__.items():
-            if k.endswith('folder') and k not in self.__slots__:
+            if k.endswith("folder") and k not in self.__slots__:
                 v(self).mkdir(parents=True, exist_ok=True)
-        spec_src = default_forms_folder / 'image_folder_specification.yml'
-        spec_dst = self.specification_path()
+        spec_src = _DEFAULT_FOLDER_CONFIGURATIONS_STORAGE / _IMAGE_FOLDER_CONFIGURATION_NAME
+        spec_dst = self.configuration_path()
         shutil.copy(spec_src, spec_dst)
 
-    def specification_path(self) -> pathlib.Path:
-        """:returns path to the image folder config"""
-        return self._folder / 'image_folder_specification.yml'
-
-    def specification(self) -> dict:
-        """reads and returns this image folder config"""
-        with self.specification_path().open('rt') as f:
-            spec = yaml.safe_load(f.read())
-        return spec
-
-    def image_info(self, name: str) -> 'ImageInfo':
+    def image_info(self, name: str) -> "ImageInfo":
         """shorthand `ImageInfo` constructor"""
         return ImageInfo(self, name)
 
@@ -265,7 +274,7 @@ class ImageFolderInfo:
         !NB: uses `self.image_folder()` to deduce image names
         """
         for p in self.image_folder().iterdir():
-            n = p.with_suffix('').name
+            n = p.with_suffix("").name
             yield ImageInfo(self, n)
 
     def raw_iter(self) -> image_info_iterator_type:
@@ -288,7 +297,7 @@ class ImageInfo:
     Serves for retrieving different representations of a single tomographic section,
     as well as it's metadata
     """
-    __slots__ = '_folder_info', '_name'
+    __slots__ = "_folder_info", "_name"
 
     def __init__(self, folder_info: image_folder_info_like, name: str):
         self._folder_info = ImageFolderInfo(folder_info)
@@ -305,37 +314,37 @@ class ImageInfo:
         """:returns name of """
         return self._folder_info
 
-    def raw_image_path(self) -> pathlib.Path:
+    def raw_image_path(self) -> Path:
         """:returns path of raw image version"""
         return self._folder_info.raw_image_folder() / self._name
 
-    def raw_image(self, dtype='<i4', shape=(256, 256)) -> np.ndarray:
+    def raw_image(self, dtype="<i4", shape=(256, 256)) -> np.ndarray:
         """reads and :returns raw image as ndarray"""
         return np.fromfile(self.raw_image_path(), dtype=dtype).reshape(shape)
 
-    def image_path(self) -> pathlib.Path:
+    def image_path(self) -> Path:
         """:returns path to uncropped `.npy` image"""
-        return self._folder_info.image_folder() / (self._name + '.npy')
+        return self._folder_info.image_folder() / (self._name + ".npy")
 
     def image(self) -> np.ndarray:
         """reads and :returns uncropped `.npy` image"""
         return np.load(self.image_path())
 
-    def cropped_image_path(self) -> pathlib.Path:
+    def cropped_image_path(self) -> Path:
         """:returns path to cropped `.npy` image"""
-        return self._folder_info.cropped_image_folder() / (self._name + '.npy')
+        return self._folder_info.cropped_image_folder() / (self._name + ".npy")
 
     def cropped_image(self) -> np.ndarray:
         """reads and :returns cropped `.npy` image"""
         return np.load(self.cropped_image_path())
 
-    def metadata_path(self) -> pathlib.Path:
+    def metadata_path(self) -> Path:
         """:returns path to `.yml` metadata of this image"""
-        return self._folder_info.metadata_folder() / (self._name + '.yml')
+        return self._folder_info.metadata_folder() / (self._name + ".yml")
 
     def metadata(self) -> dict:
         """reads and :returns `.yml` metadata of this image"""
-        with self.metadata_path().open('rt') as f:
+        with self.metadata_path().open("rt") as f:
             m = yaml.safe_load(f.read())
         return m
 
@@ -344,7 +353,7 @@ class SegmentationResultFolderInfo:
     """
     For managing folder with segmentation results. Normally it is initialized from existing folder.
     """
-    __slots__ = '_image_folder_info', '_ontology_folder_info', '_folder'
+    __slots__ = "_image_folder_info", "_ontology_folder_info", "_folder"
 
     def __init__(
             self,
@@ -364,7 +373,7 @@ class SegmentationResultFolderInfo:
         self._ontology_folder_info = OntologyFolderInfo(ontology_folder_info)
         self._folder = deepcopy(folder.folder()) \
             if isinstance(folder, self.__class__) \
-            else pathlib.Path(folder)
+            else Path(folder)
 
     def image_folder_info(self) -> ImageFolderInfo:
         """:returns `ImageFolderInfo` associated with the instance"""
@@ -374,45 +383,45 @@ class SegmentationResultFolderInfo:
         """:returns `OntologyFolderInfo` associated with this instance"""
         return self._ontology_folder_info
 
-    def folder(self) -> pathlib.Path:
+    def folder(self) -> Path:
         """:returns root folder"""
         return self._folder
 
-    def specification_folder(self) -> pathlib.Path:
+    def configuration_folder(self) -> Path:
         """:returns folder with configs"""
-        return self._folder / 'spec'
+        return self._folder / "spec"
 
-    def specification_path(self) -> pathlib.Path:
+    def configuration_path(self) -> Path:
         """:returns path to the folder config"""
-        return self.specification_folder() / 'specification_form.yml'
+        return self.configuration_folder() / _RESULTS_FOLDER_CONFIGURATION_NAME
 
-    def specification(self) -> dict:
+    def configuration(self) -> dict:
         """reads and :returns folder config"""
-        with self.specification_path().open('rt') as f:
+        with self.configuration_path().open("rt") as f:
             spec = yaml.safe_load(f.read())
         return spec
 
-    def structure_list_path(self) -> pathlib.Path:
+    def structure_list_path(self) -> Path:
         """:returns path to the list of structures involved into segmentation"""
-        return self.specification_folder() / 'structures.txt'
+        return self.configuration_folder() / 'structures.txt'
 
-    def batches_path(self) -> pathlib.Path:
+    def batches_path(self) -> Path:
         """:returns path to the file that specifies groups, etc during segmentation."""
-        return self.specification_folder() / 'batches.txt'
+        return self.configuration_folder() / 'batches.txt'
 
-    def mask_permutation_path(self) -> pathlib.Path:
+    def mask_permutation_path(self) -> Path:
         """:returns path to the file that specifies how each structure mask is perturbed"""
-        return self.specification_folder() / 'mask_permutation.py'
+        return self.configuration_folder() / 'mask_permutation.py'
 
-    def segmentation_temp(self) -> pathlib.Path:
+    def segmentation_temp(self) -> Path:
         """:returns path to the folder that stores intermediate segmentation files"""
         return self.folder() / 'temp'
 
-    def table_folder(self) -> pathlib.Path:
+    def table_folder(self) -> Path:
         """:returns folder that stores output tables"""
         return self.folder() / 'tables'
 
-    def plot_folder(self) -> pathlib.Path:
+    def plot_folder(self) -> Path:
         """:returns folder that stores output plots"""
         return self.folder() / 'plots'
 
@@ -426,8 +435,8 @@ class SegmentationResultFolderInfo:
         :raises FileNotFoundError if one of the folders does not exist
         """
         dummy_instance = cls('', '', folder)
-        spec = dummy_instance.specification()['general']
-        im_f, ont_f = pathlib.Path(spec['image_folder']), pathlib.Path(spec['ontology_folder'])
+        spec = dummy_instance.configuration()['general']
+        im_f, ont_f = Path(spec['image_folder']), Path(spec['ontology_folder'])
 
         if not (im_f.exists() and ont_f.exists()):
             raise FileNotFoundError(f"{im_f} and {ont_f} do not exist!")
@@ -445,13 +454,13 @@ class SegmentationResultFolderInfo:
         for k, v in self.__class__.__dict__.items():
             if k.endswith('folder') and k not in self.__slots__:
                 v(self).mkdir(parents=True, exist_ok=True)
-        src = default_forms_folder / 'result_folder_specification.yml'
-        dst = self.specification_path()
+        src = _DEFAULT_FOLDER_CONFIGURATIONS_STORAGE / _RESULTS_FOLDER_CONFIGURATION_NAME
+        dst = self.configuration_path()
         with src.open('rt') as f:
             text = f.read()
         x = str(self._ontology_folder_info.folder().as_posix())
-        text = text.replace('replace with ontology folder absolute path', x, 1)
+        text = text.replace(_STRING_REPLACED_WITH_ONTOLOGY_FOLDER, x, 1)
         x = str(self._image_folder_info.folder().as_posix())
-        text = text.replace('replace with image folder absolute path', x, 1)
+        text = text.replace(_STRING_REPLACED_WITH_IMAGE_FOLDER, x, 1)
         with dst.open('wt') as f:
             f.write(text)

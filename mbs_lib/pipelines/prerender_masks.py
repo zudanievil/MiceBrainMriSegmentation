@@ -32,7 +32,7 @@ def main(ontology_folder_info: info_classes.ontology_folder_info_like,
     ontology_folder_info = info_classes.OntologyFolderInfo(ontology_folder_info)
     image_folder_info = info_classes.ImageFolderInfo(image_folder_info)
     frame_shapes = get_frame_shapes_dict(frames, ontology_folder_info, image_folder_info)
-    spec = ontology_folder_info.specification()['rendering_constants']
+    spec = ontology_folder_info.configuration()['rendering_constants']
     assert_no_collisions(ontology_folder_info, frame_shapes)
     for frame, frame_shape in frame_shapes.items():
         ontology_info = ontology_folder_info.ontology_info(frame)
@@ -77,9 +77,9 @@ def get_frame_shapes_dict(frames: maybe_string_collection,
             f'not all of {frames} have a corresponding svg file'
     else:
         frames = available_frames
-    shapes = image_folder_info.specification()['cropped_image_shapes']
+    shapes = image_folder_info.configuration()['cropped_image_shapes']
     assert frames.issubset(shapes), \
-        f'image_folder specification does not include shapes for all of {frames}'
+        f'image_folder configuration does not include shapes for all of {frames}'
     return {f: sh for f, sh in shapes.items() if f in frames}
 
 

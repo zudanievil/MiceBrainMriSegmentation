@@ -30,7 +30,7 @@ def download_slice_ids_table(ontology_folder_info: info_classes.ontology_folder_
     ontology_folder_info = info_classes.OntologyFolderInfo(ontology_folder_info)
     save_path = ontology_folder_info.folder() / 'slice_ids.txt'
 
-    spec = ontology_folder_info.specification()
+    spec = ontology_folder_info.configuration()
     kwargs = spec['downloading_arguments']
     url = spec['downloading_urls']['slice_ids']
     url = url.format(**kwargs)
@@ -59,7 +59,7 @@ def download_default_ontology(ontology_folder_info: info_classes.ontology_folder
     """
     ontology_folder_info = info_classes.OntologyFolderInfo(ontology_folder_info)
     save_path = ontology_folder_info.ontology_info(frame='ignore').default_tree_path()
-    spec = ontology_folder_info.specification()
+    spec = ontology_folder_info.configuration()
     kwargs = spec['downloading_arguments']
     url = spec['downloading_urls']['ontology']
     url = url.format(**kwargs)
@@ -111,7 +111,7 @@ def download_svgs(ontology_folder_info: info_classes.ontology_folder_info_like) 
     """
     ontology_folder_info = info_classes.OntologyFolderInfo(ontology_folder_info)
     save_folder = ontology_folder_info.svgs_folder()
-    spec = ontology_folder_info.specification()
+    spec = ontology_folder_info.configuration()
     kwargs = spec['downloading_arguments']
     url = spec['downloading_urls']['svg']
     for name, slice_id in kwargs['svg_names_and_slice_ids'].items():

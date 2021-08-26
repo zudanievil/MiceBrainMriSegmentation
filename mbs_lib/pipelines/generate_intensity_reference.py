@@ -30,7 +30,7 @@ def generate_reference_table(srfi: info_classes.segmentation_result_folder_info_
     save_folder.mkdir(exist_ok=True)
     image_folder_info = srfi.image_folder_info()
     ontology_folder_info = srfi.ontology_folder_info()
-    fname_fields = image_folder_info.specification()['file_name_fields']
+    fname_fields = image_folder_info.configuration()['file_name_fields']
     stats = []
     pb = tqdm.tqdm(leave=False, total=len(image_folder_info))
     pb.set_description('reference_table_generation')
@@ -134,9 +134,9 @@ def plot_reference_table(srfi: info_classes.segmentation_result_folder_info_like
     """
     save_folder = srfi.folder() / 'additional_references'
     image_folder_info = srfi.image_folder_info()
-    fname_fields = image_folder_info.specification()['file_name_fields']
+    fname_fields = image_folder_info.configuration()['file_name_fields']
     t = pd.read_csv(save_folder/'ref_table.txt', sep='\t', index_col=0)
-    batch_spec = srfi.specification()['batching']
+    batch_spec = srfi.configuration()['batching']
     metrics = set(t.columns)
     metrics.difference_update(set(fname_fields))
 
@@ -173,7 +173,7 @@ def add_references_to_metadata(srfi: info_classes.segmentation_result_folder_inf
     """
     save_folder = srfi.folder() / 'additional_references'
     image_folder_info = srfi.image_folder_info()
-    fname_fields = image_folder_info.specification()['file_name_fields']
+    fname_fields = image_folder_info.configuration()['file_name_fields']
     t = pd.read_csv(save_folder / 'ref_table.txt', sep='\t', index_col=0)
     t.drop(columns=fname_fields, inplace=True)
     pb = tqdm.tqdm(leave=False, total=len(image_folder_info))

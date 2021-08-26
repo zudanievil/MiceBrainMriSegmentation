@@ -48,8 +48,8 @@ def main(image_folder_info: info_classes.image_folder_info_like, save_png_previe
     :param save_png_previews: saves a black and white .png preview of .npy file for visual inspection, debugging
     """
     image_folder_info = info_classes.ImageFolderInfo(image_folder_info)
-    frame_shapes = image_folder_info.specification()["cropped_image_shapes"]
-    tform_kwargs = image_folder_info.specification()["image_transform_interpolation"]
+    frame_shapes = image_folder_info.configuration()["cropped_image_shapes"]
+    tform_kwargs = image_folder_info.configuration()["image_transform_interpolation"]
 
     progress_bar = tqdm.tqdm(leave=False, total=len(image_folder_info))
     for image_info in image_folder_info:

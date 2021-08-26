@@ -31,7 +31,7 @@ def refactor_summary(segmentation_result_folder_info: info_classes.segmentation_
     load_path = srfi.table_folder() / 'segm_result.txt'
     save_path = srfi.table_folder() / 'segm_result_refactored.txt'
 
-    spec = srfi.specification()
+    spec = srfi.configuration()
     compare_by = spec['batching']['compare_by'][0]
     pval_thresholds = spec['comparison']['pval_thresholds']
     del spec
@@ -68,7 +68,7 @@ def make_kinetics_table(segmentation_result_folder_info: info_classes.segmentati
     srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
     load_path = srfi.table_folder() / 'segm_result.txt'
     save_path = srfi.table_folder() / 'kinetic_table.txt'
-    ref = srfi.specification()['comparison']['normalize_image_by']
+    ref = srfi.configuration()['comparison']['normalize_image_by']
 
     t1 = pd.read_csv(load_path, sep='\t')
     t1.drop(columns=['is_ref', ref, 'group',
@@ -149,7 +149,7 @@ def plot_segmentation_results(segmentation_result_folder_info: info_classes.segm
     load_path = srfi.table_folder() / 'segm_result_refactored.txt'
     plot_folder = srfi.plot_folder()
 
-    spec = srfi.specification()
+    spec = srfi.configuration()
     compare_by = spec['batching']['compare_by'][0]
     pval_thresholds = spec['comparison']['pval_thresholds']
     plot_spec = spec['summary_plot']

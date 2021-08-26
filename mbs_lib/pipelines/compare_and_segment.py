@@ -215,9 +215,9 @@ def stats_over_structure_mask(
 def main(segmentation_result_folder_info: info_classes.segmentation_result_folder_info_like,
          batch_range: slice = None, save_intersection_images: bool = True):
     """for each batch of animals (see `pipelines.batch_for_comparison`)
-    1. compare images with specified statistic (see results folder specification, `comparison/image_comparison_type`)
+    1. compare images with specified statistic (see results folder configuration, `comparison/image_comparison_type`)
     2. plot p-values (false positive rate), difference between images (if `save_intersection_images=True`)
-    3. for differen p-value levels (see specification `comparison/pval_thesholds`),
+    3. for differen p-value levels (see configuration `comparison/pval_thesholds`),
     calculate number of significant pixels, mean and standard deviation.
     calculated statistics are stored in "pickled" DataFrames,
     they need to be aggregated by `pipelines.compare_and_segment.collect_segmentation_results` function
@@ -229,7 +229,7 @@ def main(segmentation_result_folder_info: info_classes.segmentation_result_folde
     srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
     plot_folder = get_plot_folder(srfi) if save_intersection_images else None
     srfi.segmentation_temp().mkdir(exist_ok=True)
-    spec = srfi.specification()['comparison']
+    spec = srfi.configuration()['comparison']
     mask_permutation = load_mask_permutation(srfi)
     bgen = batches_gen(srfi, batch_range)
     n_batches = next(bgen)
@@ -265,13 +265,13 @@ def collect_segmentation_results(segmentation_result_folder_info: info_classes.s
                                  delete_temporary_folder=False):
     """
     collects "pickled" results of `pipelines.compare_and_segment.main` function into a `segm_result.txt` table.
-    deletes columns, specified in `comparison/drop_columns_from_summary` entry of specification
-    based on `batching` entries of the specification, deletes excessive rows, corresponding to "reference" images
+    deletes columns, specified in `comparison/drop_columns_from_summary` entry of configuration
+    based on `batching` entries of the configuration, deletes excessive rows, corresponding to "reference" images
     for "reference" images zeroes out values that correspond to significant thresholds from
     `comparison/pvalue_thresholds`
     """
     srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
-    spec = srfi.specification()
+    spec = srfi.configuration()
     temp_folder = srfi.segmentation_temp()
     t = join_pickles(temp_folder)
     t.drop(columns=spec["comparison"]["drop_columns_from_summary"], inplace=True)
@@ -295,7 +295,7 @@ def join_pickles(folder: pathlib.Path) -> pandas.DataFrame:
 def drop_duplicates(t: pandas.DataFrame, bspec: dict) -> pandas.DataFrame:
     """
     (in-place) drops duplicate rows from DataFrame, according to "batching"
-    arguments from segmentation folder specification:
+    arguments from segmentation folder configuration:
     columns that correspond to "batching" options are set as DataFrame index,
     then duplicate index entries are removed.
     these duplicate entries come from multiple comparisons with single group

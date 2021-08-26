@@ -33,7 +33,7 @@ def main(img_folder: info_classes.image_folder_info_like) -> 'list[pathlib.Path]
     :return: list with paths for the not found metadata chuncks, which can be empty
     """
     img_folder = info_classes.ImageFolderInfo(img_folder)
-    img_folder_spec = img_folder.specification()
+    img_folder_spec = img_folder.configuration()
     fname_fields = img_folder_spec['file_name_fields']
     metadata_keys = img_folder_spec['metadata_keys']
     meta_source_folder = img_folder.pre_metadata_folder()

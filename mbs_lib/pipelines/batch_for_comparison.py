@@ -9,7 +9,7 @@ from ..core import info_classes
 
 def table_of_images(image_folder_info: info_classes.ImageFolderInfo) -> pandas.DataFrame:
     table = []
-    columns = ('name', *image_folder_info.specification()['file_name_fields'])
+    columns = ('name', *image_folder_info.configuration()['file_name_fields'])
     for image_info in image_folder_info:
         name = image_info.name()
         column_values = (name, *name.split('_'))
@@ -50,7 +50,7 @@ def split_to_groups(table: pandas.DataFrame, spec: dict) -> pandas.DataFrame:
 def main(segmentation_result_folder_info: info_classes.segmentation_result_folder_info_like):
     rf = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
     image_folder_info = rf.image_folder_info()
-    spec = rf.specification()['batching']
+    spec = rf.configuration()['batching']
     t = table_of_images(image_folder_info)
     t = split_to_groups(t, spec)
     t.to_csv(rf.batches_path(), sep='\t', na_rep='NA', index=True)
