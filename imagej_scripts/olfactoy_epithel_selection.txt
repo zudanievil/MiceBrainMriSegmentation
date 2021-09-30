@@ -1,0 +1,108 @@
+// ImageJ macro guide: https://imagej.nih.gov/ij/developer/macro/macros.html#tools
+// ImageJ macro functions list: https://imagej.nih.gov/ij/developer/macro/functions.html
+
+//vars for macro communication
+var cwd = "";
+var file_list_path = "";
+var pointer_path = "";
+var save_folder = "";
+var save_name = "";
+var image_source_folder = "";
+
+
+function getPointer(){
+  filestring = File.openAsString(pointer_path);
+  i = parseInt(filestring);
+  return i;
+  }
+
+
+function setPointer(i){
+    f = File.open(pointer_path);
+    s = "" + i;
+    print(f, s);
+    File.close(f);
+    }
+
+
+function getName(i){
+    file_string = File.openAsString(file_list_path);
+    names = split(file_string, "\n");
+    name = names[i];
+    save_name = name;
+    }
+
+//IMAGE OPENING FUNCTION
+function open32bitImg(){
+    path = image_source_folder + save_name; //globals
+    cmd = "Raw..." //for opening bytestring image
+    args = "open="+ path + " image=[32-bit Unsigned] width=256 height=256 little-endian"; //additional arguments
+    run(cmd, args);
+    }
+
+
+function getLineRotationDegs(){
+    Roi.getCoordinates(x, y);
+    if (y[0] > y[1]) {dy = y[0] - y[1]; dx = x[0] - x[1];}
+    else             {dy = y[1] - y[0]; dx = x[1] - x[0];}
+    degs = -atan2(dy, dx)/PI*180 + 90;
+    return degs;
+    }
+
+
+function flashLog(str_){
+    print(str_);
+    selectWindow("Log");
+    run("Close");
+    }
+
+
+function closeResults(){
+    selectWindow("Results");
+    run("Close");
+    }
+
+
+//=========== macros ================
+
+macro 'select working directory [p]'{
+    some_file = File.openDialog("select any file in a project directory");
+    cwd = File.getParent(some_file) + "/";
+    file_list_path = cwd + "ij_img_list.txt";
+    pointer_path = cwd + "ij_pointer.txt";
+    save_folder = cwd + "pre_meta/";
+    image_source_folder = cwd +  "img_raw/";
+    }
+
+
+macro 'initiate sequence[i]'{
+    i = getPointer();
+    getName(i);
+    open32bitImg();
+    setTool("polygon");
+    }
+
+
+macro 'next in sequence[g]' {
+    close();
+    i = getPointer();
+    i = i + 1;
+    getName(i);
+    open32bitImg();
+    setPointer(i);
+    setTool("polygon");
+    }
+
+
+macro 'capture left part[q]'{
+    path = save_folder + save_name + "_lolf.txt";
+    saveAs("Save XY Coordinates...", path);
+    flashLog("LEFT");
+    }
+
+
+macro 'capture right part[e]'{
+    path = save_folder + save_name + "_rolf.txt";
+    saveAs("Save XY Coordinates...", path);
+    flashLog("RIGHT");
+    }
