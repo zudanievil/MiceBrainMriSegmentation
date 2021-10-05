@@ -33,6 +33,7 @@ def main(ontology_folder_info: info_classes.ontology_folder_info_like,
     image_folder_info = info_classes.ImageFolderInfo(image_folder_info)
     frame_shapes = get_frame_shapes_dict(frames, ontology_folder_info, image_folder_info)
     spec = ontology_folder_info.configuration()['rendering_constants']
+    check_inkscape_version(spec)
     assert_no_collisions(ontology_folder_info, frame_shapes)
     for frame, frame_shape in frame_shapes.items():
         ontology_info = ontology_folder_info.ontology_info(frame)
@@ -66,6 +67,31 @@ def main(ontology_folder_info: info_classes.ontology_folder_info_like,
         save_structure_tree(structure_tree_root, ontology_info, spec)
 
 
+def get_inkscape_version(inkscape_executable: str) -> str:
+    with subprocess.Popen((inkscape_executable + " --version").split()) as p:
+        out, _ = p.communicate()
+    return out.split()[1]
+
+
+def version_is_greater_equal(current: str, required: str) -> bool:
+    ge = True
+    for cv, rv in zip(current.split("."), required.split(".")):
+        cv, rv = int(cv), int(rv)
+        if cv > rv:
+            ge = True
+            break
+        elif cv < rv:
+            ge = False
+            break
+    return ge
+
+
+def check_inkscape_version(spec: dict) -> None:
+    required: str = spec["inkscape_minimal_version"]
+    current = get_inkscape_version(spec["inkscape_executable_path"])
+    assert version_is_greater_equal(current, required), f"Inkscape version is {current}, required {required}"
+
+
 def get_frame_shapes_dict(frames: maybe_string_collection,
                           ontology_folder_info: info_classes.OntologyFolderInfo,
                           image_folder_info: info_classes.ImageFolderInfo) -> shape_dict_type:
@@ -92,8 +118,8 @@ def assert_no_collisions(ontology_folder_info: info_classes.OntologyFolderInfo,
         if (folder / frame).exists():
             collisions.append(frame)
     if collisions:
-        raise AssertionError(f'{folder} contains names: {collisions} that '
-                             f'will collide with the new subfolders with masks')
+        raise AssertionError(
+            f'{folder} contains names: {collisions} that will collide with the new subfolders with masks')
 
 
 def compose_structure_path(ontology_info: info_classes.OntologyInfo,
@@ -212,7 +238,7 @@ def svg_mask_to_png(
         src_path=load_path, dst_path=save_path, height=shape[0], width=shape[1])
     for i in range(3):  # in case rendering fails because of some internal error (had this problem several times)
         try:
-            process = subprocess.Popen(cmd)
+            process = subprocess.Popen(cmd.split())
             process.wait(10)
             process.kill()
             break

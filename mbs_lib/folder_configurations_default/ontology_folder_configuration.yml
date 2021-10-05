@@ -22,8 +22,9 @@ rendering_constants:
   save_mask_imgs: true
   include_substructures: true
   svg_crop_id: 'bbox'
-  inkscape_executable_path: 'C:/Program Files/Inkscape/bin/inkscape'
-  rendering_command: '"{inkscape}" --export-id={export_id} --export-filename="{dst_path}" --export-background-opacity=1.0 --export-height={height} --export-width={width} "{src_path}"'
+  inkscape_minimal_version: "1.0"
+  inkscape_executable_path: "bash /var/lib/flatpak/exports/bin/org.inkscape.Inkscape"
+  rendering_command: "{inkscape} --export-png-color-mode=Gray_1 --export-id={export_id} --export-filename='{dst_path}' --export-background-opacity=1.0 --export-height={height} --export-width={width} '{src_path}'"
   allowed_svg_tag_tails:
     - 'svg'
     - 'g'
