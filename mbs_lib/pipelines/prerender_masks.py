@@ -68,9 +68,11 @@ def main(ontology_folder_info: info_classes.ontology_folder_info_like,
 
 
 def get_inkscape_version(inkscape_executable: str) -> str:
-    with subprocess.Popen((inkscape_executable + " --version").split()) as p:
-        out, _ = p.communicate()
-    return out.split()[1]
+    with subprocess.Popen(
+            (inkscape_executable + " --version").split(),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+        out, err = p.communicate()
+    return out.decode().split()[1]
 
 
 def version_is_greater_equal(current: str, required: str) -> bool:
