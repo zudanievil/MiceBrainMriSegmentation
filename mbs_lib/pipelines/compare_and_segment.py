@@ -147,7 +147,7 @@ def compare(imgs, ref_mask, image_comparison_type: str, gaussian_kwargs) -> (num
         mdif = calculate_pixwise_mean_of_difference(imgs, ref_mask)
     else:
         raise ValueError("image_comparison_type must be one of {'independent', 'pairwise'}")
-    pval = smooth_out_p_values(pval)
+    pval = smooth_out_p_values(pval, gaussian_kwargs)
     return pval, mdif
 
 
@@ -240,6 +240,15 @@ def main(segmentation_result_folder_info: info_classes.segmentation_result_folde
     calculated statistics are stored in "pickled" DataFrames,
     they need to be aggregated by `pipelines.compare_and_segment.collect_segmentation_results` function
 
+    NB: one can specify a set of anatomical structures to use in the file
+    at location given by `segmentation_results_folder_info.structure_list_path()`.
+    the structures must be provided as newline-separated list.
+
+    NB: one can also make "mask_permutation.py" script that will specify how to permute structure mask
+    (2d numpy boolean array) the script must contain entry
+    function `mask_permutation(x: numpy.ndarray) -> numpy.ndarray`.
+    The location of such file is specified by `segmentation_results_folder_info.mask_permutation_path()`
+
     You can influence how the atlas mask is applied to the images by editing `mask_permutation.py`
     file in the results folder.
     """
@@ -275,7 +284,7 @@ def main(segmentation_result_folder_info: info_classes.segmentation_result_folde
             )
         stats = pandas.concat(stats, axis=0)
         pickle_path = srfi.segmentation_temp()/f'{batch_no}.pickle'
-        stats.to_pickle(pickle_path)
+        stats.to_pickle(str(pickle_path))
 
     progress_bar.close()
     plt.ion()
