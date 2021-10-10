@@ -1,2 +1,2 @@
 # MiceBrainMriSegmentation
-instructions are given in the >>[instructions.ipynb](./instructions.ipynb)<< file
+demonstration is in [`ipynb/example.ipynb`](./ipynb/example.ipynb) file
