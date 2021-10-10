@@ -201,7 +201,7 @@ class InkscapeWrapper:
         cur_ver = get_version_tuple(cur_ver)
         cmd_versions = [(get_version_tuple(x["version"]), x["command"]) for x in c["inkscape_command_versions"]]
         try:
-            ver, cmd = max(filter(lambda x: x[0] > cur_ver, cmd_versions), key=lambda x: x[0])
+            ver, cmd = max(filter(lambda x: x[0] <= cur_ver, cmd_versions), key=lambda x: x[0])
         except ValueError:
             raise ValueError(f"Could not find suitable command for inkscape version {cur_ver}\n"
                              f"Supported command versions: {cmd_versions}")
