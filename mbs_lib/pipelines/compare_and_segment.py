@@ -1,4 +1,6 @@
+import importlib
 import pathlib
+import sys
 import typing
 import tqdm
 import numpy
@@ -27,11 +29,27 @@ def load_mask_permutation(srfi: info_classes.segmentation_result_folder_info_lik
     """unsafe function reads code from "mask_permutation.py" file in results folder """
     p = srfi.mask_permutation_path()
     if p.exists():
-        with p.open('rt') as f:
-            exec(f.read())
-        return locals()['mask_permutation']
+        sys.path.insert(0, str(p.parent))  # this may not be thread-safe
+        module = importlib.import_module(p.stem)
+        sys.path.pop(0)
+        return module.mask_permutation
     else:
         return lambda x, *y: x
+
+
+class UniversumSet:
+    @classmethod
+    def __contains__(cls, item):
+        return True
+
+
+def get_selected_structures(p: pathlib.Path) -> typing.Union[typing.Set[str], UniversumSet]:
+    if not p.exists():
+        return UniversumSet()
+    else:
+        with p.open("rt") as f:
+            ss = {name.strip() for name in f.readlines()}
+        return ss
 
 
 def batches_gen(srfi: info_classes.segmentation_result_folder_info_like, batch_range: slice = None) -> \
@@ -231,6 +249,7 @@ def main(segmentation_result_folder_info: info_classes.segmentation_result_folde
     srfi.segmentation_temp().mkdir(exist_ok=True)
     spec = srfi.configuration()['comparison']
     mask_permutation = load_mask_permutation(srfi)
+    selected_structures = get_selected_structures(srfi.structure_list_path())
     bgen = batches_gen(srfi, batch_range)
     n_batches = next(bgen)
 
@@ -246,6 +265,8 @@ def main(segmentation_result_folder_info: info_classes.segmentation_result_folde
 
         stats = []
         for structure_mask, structure_info in mask_gen(srfi, metas):
+            if structure_info["name"] not in selected_structures:
+                continue
             structure_mask = mask_permutation(structure_mask)
             if save_intersection_images:
                 plot_pval_mdif(spec, pval, mdif, metas, structure_mask, structure_info, plot_folder)
