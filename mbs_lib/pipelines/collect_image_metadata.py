@@ -13,7 +13,7 @@ def read_metadata_chuncks(fname_start: pathlib.Path, metadata_keys: dict, not_fo
         dtype = numpy.dtype(v['dtype'])
         idx = numpy.array(v['indices'], dtype=numpy.int)
         try:
-            chunck = numpy.fromfile(fname, sep='\t', dtype=dtype)[idx].tolist()
+            chunck = numpy.fromfile(fname, sep='\t')[idx].astype(dtype).tolist()
             meta[k] = chunck if len(chunck) > 1 else chunck[0]
         except FileNotFoundError:
             not_found_list.append(pathlib.Path(fname))
