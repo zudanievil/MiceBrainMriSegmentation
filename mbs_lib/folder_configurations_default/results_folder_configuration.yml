@@ -12,33 +12,30 @@ batching:
     - animal
 
 comparison:
-  normalize_image_by: 'ER_head_median'   # metadata key
+  normalization:
+      subtract: "ER_head_median"  # valid metadata key, nullable
+      divide_by: "ER_image_std"   # valid metadata key, nullable
   pval_thresholds:
     - 1
     - 0.05
     - 0.01
-  drop_columns_from_summary:
-    - lbbox
-    - rbbox
-    - refzone
-    - reference
-    - rotation
-    - ER_animal_mean
-    - ER_animal_median
-    - ER_animal_std
-    - ER_back_mean
-    - ER_back_median
-    - ER_back_std
-    - ER_brain_mean
-    - ER_brain_median
-    - ER_brain_std
-    - ER_head_mean
-#    - ER_head_median
-    - ER_head_std
-    - ER_histogram_bg_peak
-    - ER_image_mean
-    - ER_image_median
-    - ER_image_std
+  take_columns_to_summary:
+    - ER_head_median
+    - ER_image_std 
+    - animal 
+    - frame 
+    - hour
+    - is_ref 
+    - structure 
+    - mean (p <1) 
+    - std (p <1) 
+    - px (p <1) 
+    - mean (p <0.05) 
+    - std (p <0.05) 
+    - px (p <0.05) 
+    - mean (p <0.01) 
+    - std (p <0.01) 
+    - px (p <0.01)
   pvalue_smoothing_kwargs:
     sigma: 1
     preserve_range: True

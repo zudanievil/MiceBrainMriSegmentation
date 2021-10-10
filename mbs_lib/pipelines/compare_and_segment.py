@@ -89,10 +89,10 @@ def get_imgs_metas(
 
 def normalize_imgs(imgs, metas, spec) -> numpy.ndarray:
     """normalizes images to account for intensity shift"""
-    ref_key = spec['normalize_image_by']
-    # imgs /= metas[ref_key].to_numpy()[..., numpy.newaxis, numpy.newaxis]  # old way of normalization
-    hm = metas[ref_key].to_numpy()[..., numpy.newaxis, numpy.newaxis]
-    std = metas['ER_image_std'].to_numpy()[..., numpy.newaxis, numpy.newaxis]
+    base_key = spec["normalization"]["subtract"]
+    var_key = spec["normalization"]["divide_by"]
+    hm = metas[base_key].to_numpy()[..., numpy.newaxis, numpy.newaxis] if base_key else 0
+    std = metas[var_key].to_numpy()[..., numpy.newaxis, numpy.newaxis] if var_key else 1
     imgs = (imgs - hm) / std
     return imgs
 
@@ -294,17 +294,17 @@ def main(segmentation_result_folder_info: info_classes.segmentation_result_folde
 def collect_segmentation_results(segmentation_result_folder_info: info_classes.segmentation_result_folder_info_like,
                                  delete_temporary_folder=False):
     """
-    collects "pickled" results of `pipelines.compare_and_segment.main` function into a `segm_result.txt` table.
-    deletes columns, specified in `comparison/drop_columns_from_summary` entry of configuration
-    based on `batching` entries of the configuration, deletes excessive rows, corresponding to "reference" images
-    for "reference" images zeroes out values that correspond to significant thresholds from
-    `comparison/pvalue_thresholds`
+    Collects "pickled" results of `pipelines.compare_and_segment.main` function into a `segm_result.txt` table.
+    Deletes columns, that are not specified in `comparison/take_columns_to_summary` entry of configuration.
+    Based on `batching` entries of the configuration, deletes excessive rows, corresponding to "reference" images
+    For "reference" images zeroes out values that correspond to
+    significant thresholds from `comparison/pvalue_thresholds`
     """
     srfi = info_classes.SegmentationResultFolderInfo.read(segmentation_result_folder_info)
     spec = srfi.configuration()
     temp_folder = srfi.segmentation_temp()
     t = join_pickles(temp_folder)
-    t.drop(columns=spec["comparison"]["drop_columns_from_summary"], inplace=True)
+    t.drop(columns=spec["comparison"]["take_columns_to_summary"], inplace=True)
     t = drop_duplicates(t, spec["batching"])
     t = zero_self_comparison_stats(t, spec["comparison"]["pvalue_thresholds"])
     save_path = srfi.table_folder() / 'segm_result.txt'
