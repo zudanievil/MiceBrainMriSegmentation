@@ -306,7 +306,7 @@ def collect_segmentation_results(segmentation_result_folder_info: info_classes.s
     t = join_pickles(temp_folder)
     t = t[spec["comparison"]["take_columns_to_summary"]]
     t = drop_duplicates(t, spec["batching"])
-    t = zero_self_comparison_stats(t, spec["comparison"]["pvalue_thresholds"])
+    t = zero_self_comparison_stats(t, spec["comparison"]["pval_thresholds"])
     save_path = srfi.table_folder() / 'segm_result.txt'
     t.to_csv(save_path, sep='\t')
     if delete_temporary_folder:
