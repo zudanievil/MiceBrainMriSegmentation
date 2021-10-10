@@ -2,6 +2,7 @@ import sys
 import pathlib
 import tqdm
 import typing
+import shlex
 import subprocess
 import PIL.Image
 import numpy
@@ -9,7 +10,7 @@ import datetime
 from xml.etree import ElementTree
 from ..core import info_classes
 from ..utils import miscellaneous_utils
-
+from dataclasses import dataclass
 
 shape_dict_type = typing.Dict[str, typing.Tuple[int, int]]
 maybe_string_collection = typing.Union[typing.Iterable[str], None]
@@ -32,8 +33,8 @@ def main(ontology_folder_info: info_classes.ontology_folder_info_like,
     ontology_folder_info = info_classes.OntologyFolderInfo(ontology_folder_info)
     image_folder_info = info_classes.ImageFolderInfo(image_folder_info)
     frame_shapes = get_frame_shapes_dict(frames, ontology_folder_info, image_folder_info)
-    spec = ontology_folder_info.configuration()['rendering_constants']
-    check_inkscape_version(spec)
+    config = ontology_folder_info.configuration()['rendering_constants']
+    inkscape_wrap = InkscapeWrapper.from_config(config)
     assert_no_collisions(ontology_folder_info, frame_shapes)
     for frame, frame_shape in frame_shapes.items():
         ontology_info = ontology_folder_info.ontology_info(frame)
@@ -54,7 +55,7 @@ def main(ontology_folder_info: info_classes.ontology_folder_info_like,
                 structure_parents = miscellaneous_utils.get_structure_parents(structure_tree_root, structure.attrib['name'])
                 mask_path_rel, mask_path_abs = compose_structure_path(ontology_info, structure_parents)
                 mask_path_abs.parent.mkdir(exist_ok=True, parents=True)
-                render_structure_mask(svg_source_path, mask_path_abs, structure, frame_shape, spec)
+                render_structure_mask(inkscape_wrap, svg_source_path, mask_path_abs, structure, frame_shape, config)
                 structure.attrib['filename'] = mask_path_rel.as_posix()
                 previous_structure_not_found = False
             except EmptyMaskException:
@@ -64,34 +65,7 @@ def main(ontology_folder_info: info_classes.ontology_folder_info_like,
             previous_inspected_structure_level = structure_level
         print(f"\nTotal found structures {len(tuple(structure_tree_root.iter('structure')))}")
         progress_bar.close()
-        save_structure_tree(structure_tree_root, ontology_info, spec)
-
-
-def get_inkscape_version(inkscape_executable: str) -> str:
-    with subprocess.Popen(
-            (inkscape_executable + " --version").split(),
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
-        out, err = p.communicate()
-    return out.decode().split()[1]
-
-
-def version_is_greater_equal(current: str, required: str) -> bool:
-    ge = True
-    for cv, rv in zip(current.split("."), required.split(".")):
-        cv, rv = int(cv), int(rv)
-        if cv > rv:
-            ge = True
-            break
-        elif cv < rv:
-            ge = False
-            break
-    return ge
-
-
-def check_inkscape_version(spec: dict) -> None:
-    required: str = spec["inkscape_minimal_version"]
-    current = get_inkscape_version(spec["inkscape_executable_path"])
-    assert version_is_greater_equal(current, required), f"Inkscape version is {current}, required {required}"
+        save_structure_tree(structure_tree_root, ontology_info, config)
 
 
 def get_frame_shapes_dict(frames: maybe_string_collection,
@@ -161,19 +135,104 @@ def save_structure_tree(structure_tree_root: ElementTree.Element,
     ElementTree.ElementTree(structure_tree_root).write(p,  encoding='utf-8')
 
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+# inkscape communication functions
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+def execute_cmd(cmd: str, timeout: float = None) -> (str, str, int):
+    """
+    :param cmd must be normal shell command.
+    :param timeout for Popen.communicate
+    :returns stdout, stderr, return_code
+    """
+    with subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+        o, e = p.communicate(timeout=timeout)
+        r = p.returncode
+    o = "" if o is None else o.decode()
+    e = "" if e is None else e.decode()
+    return o, e, r
+
+
+# def get_inkscape_version(inkscape_executable: str) -> str:
+#     out, err, ret = execute_cmd(f"{inkscape_executable} --version")
+#     return out.split()[1]
+
+
+# def version_is_greater_equal(current: str, required: str) -> bool:
+#     ge = True
+#     for cv, rv in zip(current.split("."), required.split(".")):
+#         cv, rv = int(cv), int(rv)
+#         if cv > rv:
+#             ge = True
+#             break
+#         elif cv < rv:
+#             ge = False
+#             break
+#     return ge
+
+
+# def check_inkscape_version(spec: dict) -> None:
+#     required: str = spec["inkscape_minimal_version"]
+#     current = get_inkscape_version(spec["inkscape_executable_path"])
+#     assert version_is_greater_equal(current, required), f"Inkscape version is {current}, required {required}"
+
+
+def get_version_tuple(s: str):
+    return tuple(int(i) for i in s.split("."))
+
+
+@dataclass(frozen=True)
+class InkscapeWrapper:
+    """
+    provides objects for easy calls to inkscape rendering commands.
+    serves as config validator and partial application of subprocess calls.
+    """
+    inkscape: str
+    cmd_version: "tuple[int]"
+    export_cmd: str
+    svg_crop_id: str
+
+    @classmethod
+    def from_config(cls, rendering_constants: dict) -> "InkscapeWrapper":
+        c = rendering_constants
+        inkscape = c["inkscape_executable"]
+
+        cur_ver = execute_cmd(f"{inkscape} --version")[0].split()[1]
+        cur_ver = get_version_tuple(cur_ver)
+        cmd_versions = [(get_version_tuple(x["version"]), x["command"]) for x in c["inkscape_command_versions"]]
+        try:
+            ver, cmd = max(filter(lambda x: x[0] > cur_ver, cmd_versions), key=lambda x: x[0])
+        except ValueError:
+            raise ValueError(f"Could not find suitable command for inkscape version {cur_ver}\n"
+                             f"Supported command versions: {cmd_versions}")
+        return cls(inkscape, ver, cmd, c["svg_crop_id"])
+
+    def do_render(self, svg_path: pathlib.Path, png_path: pathlib.Path, shape: (int, int)):
+        cmd = self.export_cmd.format(
+            inkscape=self.inkscape, svg_crop_id=self.svg_crop_id,
+            src_path=svg_path, dst_path=png_path, height=shape[0], width=shape[1])
+        for i in range(3):  # in case rendering fails because of some internal error (had this problem several times)
+            try:
+                execute_cmd(cmd)
+                break
+            except subprocess.TimeoutExpired as e:
+                print('Inkscape process timeout', svg_path, file=sys.stderr)
+                if i >= 3:
+                    print('Too much timeouts', svg_path, file=sys.stderr)
+                    raise e
+
+# :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # mask rendering functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def render_structure_mask(svg_source_path: pathlib.Path, png_mask_path: pathlib.Path,
+def render_structure_mask(inkscape_wrap: InkscapeWrapper, svg_source_path: pathlib.Path, png_mask_path: pathlib.Path,
                           structure: ElementTree.Element, frame_shape: (int, int), spec: dict):
     """function that does whole rendering process"""
     svg_mask_path = png_mask_path.with_suffix('.svg')
     ids = get_structure_ids(structure, spec['include_substructures'])
     svg_mask_from_ids(svg_source_path, svg_mask_path, ids, spec['svg_crop_id'], tuple(spec['allowed_svg_tag_tails']))
-    svg_mask_to_png(
-        svg_mask_path, png_mask_path, frame_shape,
-        spec['inkscape_executable_path'], spec['svg_crop_id'], spec['rendering_command'],)
+    inkscape_wrap.do_render(svg_mask_path, png_mask_path, frame_shape)
     png_to_grayscale_png(png_mask_path, png_mask_path, spec['min_mask_size'])
     svg_mask_path.unlink()
 
@@ -224,32 +283,32 @@ def svg_mask_from_ids(
     ElementTree.ElementTree(svg_root).write(save_path,  encoding='utf-8')
 
 
-def svg_mask_to_png(
-        load_path: pathlib.Path,
-        save_path: pathlib.Path,
-        shape: (int, int),
-        inkscape_exe: str,
-        crop_id: str,
-        rendering_command: str,
-        ) -> None:
-    """
-    Uses Inkscape CLI to render svg. This produces an RGB png image.
-    """
-    cmd = rendering_command.format(
-        inkscape=inkscape_exe, export_id=crop_id,
-        src_path=load_path, dst_path=save_path, height=shape[0], width=shape[1])
-    for i in range(3):  # in case rendering fails because of some internal error (had this problem several times)
-        try:
-            process = subprocess.Popen(cmd.split())
-            process.wait(10)
-            process.kill()
-            break
-        except subprocess.TimeoutExpired as e:
-            print('Inkscape process timeout', load_path, file=sys.stderr)
-            process.kill()
-            if i >= 3:
-                print('Too much timeouts', load_path, file=sys.stderr)
-                raise e
+# def svg_mask_to_png(
+#         load_path: pathlib.Path,
+#         save_path: pathlib.Path,
+#         shape: (int, int),
+#         inkscape_exe: str,
+#         crop_id: str,
+#         rendering_command: str,
+#         ) -> None:
+#     """
+#     Uses Inkscape CLI to render svg. This produces an RGB png image.
+#     """
+#     cmd = rendering_command.format(
+#         inkscape=inkscape_exe, export_id=crop_id,
+#         src_path=load_path, dst_path=save_path, height=shape[0], width=shape[1])
+#     for i in range(3):  # in case rendering fails because of some internal error (had this problem several times)
+#         try:
+#             process = subprocess.Popen(cmd.split())
+#             process.wait(10)
+#             process.kill()
+#             break
+#         except subprocess.TimeoutExpired as e:
+#             print('Inkscape process timeout', load_path, file=sys.stderr)
+#             process.kill()
+#             if i >= 3:
+#                 print('Too much timeouts', load_path, file=sys.stderr)
+#                 raise e
 
 
 def png_to_grayscale_png(load_path: pathlib.Path, save_path: pathlib.Path,

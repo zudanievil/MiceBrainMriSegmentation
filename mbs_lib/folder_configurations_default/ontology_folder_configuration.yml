@@ -18,13 +18,19 @@ downloading_urls:
   ontology: 'http://api.brain-map.org/api/v2/structure_graph_download/{atlas_id}.xml'
 
 rendering_constants:
+  inkscape_executable: "bash /var/lib/flatpak/exports/bin/org.inkscape.Inkscape"
   min_mask_size: 8
   save_mask_imgs: true
   include_substructures: true
   svg_crop_id: 'bbox'
-  inkscape_minimal_version: "0.92"
-  inkscape_executable_path: "bash /var/lib/flatpak/exports/bin/org.inkscape.Inkscape"
-  rendering_command: "{inkscape} --export-id={export_id} --export-filename='{dst_path}' --export-background-opacity=1.0 --export-height={height} --export-width={width} '{src_path}'"
+
+  inkscape_command_versions: # for easy migration between versions
+    - version: "0.92"
+      command: "{inkscape} --export-id={svg_crop_id} --export-png='{dst_path}' --export-background-opacity=1.0 --export-height={height} --export-width={width} '{src_path}'"
+    - version: "1.0"
+      command: "{inkscape} --export-id={svg_crop_id} --export-filename='{dst_path}' --export-background-opacity=1.0 --export-height={height} --export-width={width} '{src_path}'"
+#  inkscape_minimal_version: "0.92"
+#  rendering_command: "{inkscape} --export-id={export_id} --export-filename='{dst_path}' --export-background-opacity=1.0 --export-height={height} --export-width={width} '{src_path}'"
   allowed_svg_tag_tails:
     - 'svg'
     - 'g'
