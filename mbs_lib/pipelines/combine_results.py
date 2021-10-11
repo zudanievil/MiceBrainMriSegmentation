@@ -41,7 +41,7 @@ def add_result_name_columns(table: pd.DataFrame, result_namer, srfi) -> (pd.Data
 
 
 def take_structures(table: pd.DataFrame, structures):
-    return table.set_index(['structure']).loc[structures].reset_index()
+    return table.set_index([_STRUCTURE_KEY]).loc[structures].reset_index()
 
 
 def main(
