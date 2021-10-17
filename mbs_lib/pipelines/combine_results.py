@@ -35,7 +35,7 @@ def add_result_name_columns(table: pd.DataFrame, result_namer, srfi) -> (pd.Data
     else:
         cols = [result_namer(srfi.folder().name)] * len(table)
         cols = pd.DataFrame(cols, index=table.index)
-        col_names = list(*cols.columns)
+        col_names = cols.columns.to_list()
         table = pd.concat((cols, table), axis="columns")
     return table, col_names
 
@@ -95,12 +95,6 @@ def main(
 
     i = added_col_names + idx_cols
     table.set_index(i, inplace=True)
-
-    # ????????????????????????????????????????????????
-    # result = table['mean (p <1)'].unstack(compare_by[0])
-    # sign = (table['px (p <0.05)'] / table['px (p <1)'] * 100).unstack(compare_by[0])
-    # result['%sign px'] = sign.apply(np.max, axis=1)
-    # ????????????????????????????????????????
 
     table.sort_index(axis=0, inplace=True)
     table.to_csv(save_path, sep='\t')
