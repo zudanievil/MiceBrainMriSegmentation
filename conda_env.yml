@@ -5,15 +5,16 @@ channels:
   - defaults
 dependencies:
   - python=3.7
-  - pyyaml
-  - tqdm
   - ipython
   - jupyter
+
+  - pyyaml
+  - tqdm
+
   - pillow
   - numpy
   - pandas
   - matplotlib
   - scikit-image
-  - pip=20.*
-  - pip:
-    - scipy
+  - scipy
+

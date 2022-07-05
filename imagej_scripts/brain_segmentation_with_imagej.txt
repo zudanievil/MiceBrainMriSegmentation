@@ -11,10 +11,10 @@ var image_source_folder = "";
 
 
 function getPointer(){
-  filestring = File.openAsString(pointer_path);
-  i = parseInt(filestring);
-  return i;
-  }
+    filestring = File.openAsString(pointer_path);
+    i = parseInt(filestring);
+    return i;
+    }
 
 
 function setPointer(i){
@@ -36,7 +36,7 @@ function getName(i){
 function open32bitImg(){
     path = image_source_folder + save_name; //globals
     cmd = "Raw..." //for opening bytestring image
-    args = "open="+ path + " image=[32-bit Unsigned] width=256 height=256 little-endian"; //additional arguments
+    args = "open=["+ path + "] image=[32-bit Unsigned] width=256 height=256 little-endian"; //additional arguments
     run(cmd, args);
     }
 
@@ -75,7 +75,7 @@ macro 'select working directory [p]'{
     }
 
 
-macro 'initiate sequence[i]'{
+macro 'initiate sequence [i]'{
     i = getPointer();
     getName(i);
     open32bitImg();
@@ -83,7 +83,7 @@ macro 'initiate sequence[i]'{
     }
 
 
-macro 'next in sequence[g]' {
+macro 'next in sequence [g]' {
     close();
     i = getPointer();
     i = i + 1;
@@ -106,21 +106,21 @@ macro 'capture rotation [r]' {
     }
 
 
-macro 'capture left hemisphere[q]'{
+macro 'capture left hemisphere [q]'{
     path = save_folder + save_name + "_lbbox.txt";
     saveAs("Save XY Coordinates...", path);
     flashLog("LEFT");    
     }
 
 
-macro 'capture right hemisphere[w]'{
+macro 'capture right hemisphere [w]'{
     path = save_folder + save_name + "_rbbox.txt";
     saveAs("XY Coordinates", path);
     flashLog("RIGT");
     }
 
 
-macro 'capture background[c]'{
+macro 'capture background [c]'{
     path = save_folder + save_name + "_refzone.txt";
     saveAs("Save XY Coordinates...", path);
     path = save_folder + save_name + "_reference.txt";
@@ -148,4 +148,4 @@ macro 'print status [o]'{
 
 macro 'show instructions [h]'{
     print("No instructions for now")
-}
+    }
