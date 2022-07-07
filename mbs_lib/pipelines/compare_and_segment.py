@@ -60,8 +60,8 @@ def batches_gen(srfi: info_classes.segmentation_result_folder_info_like, batch_r
     image names (numpy array for strings).
     """
     path = srfi.batches_path()
-    batches = pandas.read_csv(path, sep='\t', index_col=0, header=[0, 1], na_values='NA',
-                              true_values='True', false_values='False')
+    batches = pandas.read_csv(path, sep='\t', index_col=0, header=[0, 1], na_values='NA',)
+                              # true_values=['True'], false_values=['False'])
     ref_mask = batches.columns.get_level_values(0).to_numpy()
     ref_mask = ref_mask == 'True'
     batches = batches.loc[batch_range] if batch_range else batches
