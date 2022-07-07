@@ -26,11 +26,9 @@ rendering_constants:
 
   inkscape_command_versions: # for easy migration between versions
     - version: "0.92"
-      command: "{inkscape} --export-id={svg_crop_id} --export-png='{dst_path}' --export-background-opacity=1.0 --export-height={height} --export-width={width} '{src_path}'"
+      command: '{inkscape} --export-id={svg_crop_id} --export-png="{dst_path}" --export-background-opacity=1.0 --export-height={height} --export-width={width} "{src_path}"'
     - version: "1.0"
-      command: "{inkscape} --export-id={svg_crop_id} --export-filename='{dst_path}' --export-background-opacity=1.0 --export-height={height} --export-width={width} '{src_path}'"
-#  inkscape_minimal_version: "0.92"
-#  rendering_command: "{inkscape} --export-id={export_id} --export-filename='{dst_path}' --export-background-opacity=1.0 --export-height={height} --export-width={width} '{src_path}'"
+      command: '{inkscape} --export-id={svg_crop_id} --export-filename="{dst_path}" --export-background-opacity=1.0 --export-height={height} --export-width={width} "{src_path}"'
   allowed_svg_tag_tails:
     - 'svg'
     - 'g'
