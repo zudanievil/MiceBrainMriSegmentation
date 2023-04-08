@@ -3,6 +3,7 @@ common imports and definitions
 used as `from prelude import *`
 """
 import sys
+import os
 from typing import (
     TypeVar as _TV,
     Callable as Fn,
