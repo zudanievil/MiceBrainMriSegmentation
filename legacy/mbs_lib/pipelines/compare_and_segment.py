@@ -145,8 +145,12 @@ def compare(imgs, ref_mask, image_comparison_type: str, gaussian_kwargs) -> (num
     elif image_comparison_type == 'pairwise':
         _, pval = calculate_pixwise_t_rel(imgs, ref_mask)
         mdif = calculate_pixwise_mean_of_difference(imgs, ref_mask)
+    elif image_comparison_type == 'none':
+        _, h, w = imgs.shape
+        pval = numpy.full((h, w), fill_value=0.999_999_999_999)
+        mdif = numpy.zeros((h, w))
     else:
-        raise ValueError("image_comparison_type must be one of {'independent', 'pairwise'}")
+        raise ValueError("image_comparison_type must be one of {'independent', 'pairwise', 'none'}")
     pval = smooth_out_p_values(pval, gaussian_kwargs)
     return pval, mdif
 

@@ -316,7 +316,7 @@ class ImageInfo:
 
     def raw_image_path(self) -> Path:
         """:returns path of raw image version"""
-        return self._folder_info.raw_image_folder() / self._name
+        return self._folder_info.raw_image_folder() / self._name  # (self._name + ".img")
 
     def raw_image(self, dtype="<i4", shape=(256, 256)) -> np.ndarray:
         """reads and :returns raw image as ndarray"""

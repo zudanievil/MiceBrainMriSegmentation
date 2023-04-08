@@ -1,0 +1,20 @@
+name: brainS
+channels:
+  - conda-forge
+  - anaconda
+  - defaults
+dependencies:
+  - python=3.7
+  - ipython
+  - jupyter
+
+  - pyyaml
+  - tqdm
+
+  - pillow
+  - numpy
+  - pandas
+  - matplotlib
+  - scikit-image
+  - scipy
+

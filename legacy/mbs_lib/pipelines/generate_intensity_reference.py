@@ -64,6 +64,7 @@ def get_metrics_over_masks(brain_mask: "np.ndarray[bool]", head_mask: "np.ndarra
             column = mask_name + ' ' + metric_name
             result[column] = METRICS[metric_name](values)
     result['histogram bg peak'] = mri_bg_peak(img)  # no reason to use it with masks
+    result["head median over bg std"] = result["head median"] / result["back std"]
     return result
 
 
