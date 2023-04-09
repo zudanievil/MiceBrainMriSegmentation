@@ -1,0 +1,9 @@
+yaml
+toml
+
+ipython
+jupyter
+
+numpy
+pandas
+matplotlib

@@ -8,10 +8,12 @@ from typing import (
     TypeVar as _TV,
     Callable as Fn,
     Optional as Opt,
+    Protocol as Proto,
     List, Dict, Tuple, Union,
-    NamedTuple,
+    NamedTuple, Type,
 )
 from pathlib import Path
+
 
 T = _TV("T")
 T1 = _TV("T1")
@@ -24,6 +26,27 @@ class Version(NamedTuple):
     major: int
     minor: int
     patch: int
+
+
+class Err(Exception):
+    """This exception will be used in a very unpythonic way"""
+    __slots__ = "data",
+
+    def __init__(self, data):
+        super().__init__()
+        self.data = data
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __repr__(self) -> str:
+        return f"Err(data={repr(self.data)})"
+    __str__ = __repr__
+
+
+def is_err(x) -> bool:
+    """:return type(x) == Err"""
+    return type(x) == Err
 
 
 def do_it(f: Fn[[], T]) -> T:
@@ -51,3 +74,11 @@ def include(p: Union[Path, str], frame: int = 0):
     exec_(code, frame + 1)
 
 
+@do_it
+def ipyformat():
+    try:
+        from IPython.core.formatters import PlainTextFormatter as _PTF
+    except ImportError as e:
+        return Err(str(e))
+    else:
+        return _PTF()
