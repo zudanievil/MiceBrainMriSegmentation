@@ -1,9 +1,14 @@
-yaml
-toml
-
+# python >= 3.9
 ipython
 jupyter
+tqdm
 
+pyyaml
+toml
+
+pillow
 numpy
 pandas
 matplotlib
+scikit-image
+scipy
