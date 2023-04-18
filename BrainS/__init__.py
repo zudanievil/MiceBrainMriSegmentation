@@ -1,3 +1,4 @@
 from .prelude import *
 
-version = Version(3, 0, 0)
+version_tuple = (3, 0, 0)
+__version__ = ".".join(str(v) for v in version_tuple)

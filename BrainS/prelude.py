@@ -27,12 +27,6 @@ K = _TV("K")
 V = _TV("V")
 
 
-class Version(NamedTuple):
-    major: int
-    minor: int
-    patch: int
-
-
 class Err(Exception):
     """This exception will be used in a very unpythonic way"""
 

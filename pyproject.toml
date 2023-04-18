@@ -4,7 +4,7 @@ version = "3.0.0"
 description = "Custom tool for MRI scan segmentation"
 readme = "README.md"
 # license = "LICENSE"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 dependencies = [
     "toml",
     "numpy", "scipy", "scikit-image",
