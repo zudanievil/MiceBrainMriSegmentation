@@ -9,8 +9,13 @@ from typing import (
     Callable as Fn,
     Optional as Opt,
     Protocol as Proto,
-    List, Dict, Tuple, Union,
-    NamedTuple, Type,
+    List,
+    Dict,
+    Tuple,
+    Union,
+    Generic,
+    NamedTuple,
+    Type,
 )
 from pathlib import Path
 
@@ -30,7 +35,8 @@ class Version(NamedTuple):
 
 class Err(Exception):
     """This exception will be used in a very unpythonic way"""
-    __slots__ = "data",
+
+    __slots__ = ("data",)
 
     def __init__(self, data):
         super().__init__()
@@ -41,6 +47,7 @@ class Err(Exception):
 
     def __repr__(self) -> str:
         return f"Err(data={repr(self.data)})"
+
     __str__ = __repr__
 
 
@@ -75,10 +82,11 @@ def include(p: Union[Path, str], frame: int = 0):
 
 
 @do_it
-def ipyformat():
-    try:
-        from IPython.core.formatters import PlainTextFormatter as _PTF
-    except ImportError as e:
-        return Err(str(e))
-    else:
-        return _PTF()
+def ipyformat() -> "IPython.core.formatters.PlainTextFormatter":
+    from IPython.core.formatters import PlainTextFormatter as _PTF
+
+    return _PTF()
+
+
+def not_implemented(*_, **__):
+    raise NotImplementedError

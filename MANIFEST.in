@@ -1,0 +1,7 @@
+include BrainS/*
+include BrainS/configs/*.toml
+
+exclude v2/*
+exclude scripts/*
+exclude tests/*
+exclude */local_*

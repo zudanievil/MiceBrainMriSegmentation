@@ -18,9 +18,11 @@ def execute_all(ontology_folder_info: info_classes.ontology_folder_info_like):
     download_slice_ids_table(ontology_folder_info)
     download_default_ontology(ontology_folder_info)
     download_svgs(ontology_folder_info)
-   
- 
-def download_slice_ids_table(ontology_folder_info: info_classes.ontology_folder_info_like) -> None:
+
+
+def download_slice_ids_table(
+    ontology_folder_info: info_classes.ontology_folder_info_like,
+) -> None:
     """
     downloads the list of atlas sections from Allen Brain Institute brain atlases.
     sections are annotated with linear coordinate range, specified by
@@ -28,11 +30,11 @@ def download_slice_ids_table(ontology_folder_info: info_classes.ontology_folder_
     writes section ids and coordinates to a slice_ids.txt text table.
     """
     ontology_folder_info = info_classes.OntologyFolderInfo(ontology_folder_info)
-    save_path = ontology_folder_info.folder() / 'slice_ids.txt'
+    save_path = ontology_folder_info.folder() / "slice_ids.txt"
 
     spec = ontology_folder_info.configuration()
-    kwargs = spec['downloading_arguments']
-    url = spec['downloading_urls']['slice_ids']
+    kwargs = spec["downloading_arguments"]
+    url = spec["downloading_urls"]["slice_ids"]
     url = url.format(**kwargs)
     urllib.request.urlretrieve(url, save_path)
     # xml to list
@@ -42,39 +44,44 @@ def download_slice_ids_table(ontology_folder_info: info_classes.ontology_folder_
     slice_ids.reverse()
     # pair with coordinates
     slice_ids = numpy.array(slice_ids)
-    coords = numpy.linspace(**kwargs['slice_coordinates'], num=len(slice_ids))
+    coords = numpy.linspace(**kwargs["slice_coordinates"], num=len(slice_ids))
     t = pandas.DataFrame()
-    t['ids'] = slice_ids
-    t['coordinates'] = coords
+    t["ids"] = slice_ids
+    t["coordinates"] = coords
 
-    t.to_csv(save_path, sep='\t', index=False)
+    t.to_csv(save_path, sep="\t", index=False)
     print(f"saved section ids to {save_path}")
 
 
-def download_default_ontology(ontology_folder_info: info_classes.ontology_folder_info_like) -> None:
+def download_default_ontology(
+    ontology_folder_info: info_classes.ontology_folder_info_like,
+) -> None:
     """
     downloads ontology (brain structure hierarchy tree and structure ids)
     from Allen Brain Institute brain atlases.
     refactors it to make it more human-friendly (still xml, though)
     """
     ontology_folder_info = info_classes.OntologyFolderInfo(ontology_folder_info)
-    save_path = ontology_folder_info.ontology_info(frame='ignore').default_tree_path()
+    save_path = ontology_folder_info.ontology_info(
+        frame="ignore"
+    ).default_tree_path()
     spec = ontology_folder_info.configuration()
-    kwargs = spec['downloading_arguments']
-    url = spec['downloading_urls']['ontology']
+    kwargs = spec["downloading_arguments"]
+    url = spec["downloading_urls"]["ontology"]
     url = url.format(**kwargs)
     urllib.request.urlretrieve(url, str(save_path))
 
     # refactor xml
     old_root = ElementTree.parse(save_path).getroot()
-    new_root = ElementTree.Element('blank_node')
+    new_root = ElementTree.Element("blank_node")
     _recursively_refactor_default_ontology_node(new_root, old_root)
-    ElementTree.ElementTree(new_root[0]).write(save_path, encoding='utf8')
+    ElementTree.ElementTree(new_root[0]).write(save_path, encoding="utf8")
     print(f"default ontology written to {save_path}")
 
 
-def _recursively_refactor_default_ontology_node(new_node: ElementTree.Element, old_node: ElementTree.Element,
-                                                lvl: int = 0) -> None:
+def _recursively_refactor_default_ontology_node(
+    new_node: ElementTree.Element, old_node: ElementTree.Element, lvl: int = 0
+) -> None:
     """
     Makes xml ontology for brain atlas more readable,
     filters out unimportant details (display options, etc).
@@ -85,21 +92,28 @@ def _recursively_refactor_default_ontology_node(new_node: ElementTree.Element, o
     :param lvl: starting value for tree depth counter
     """
     for old_elem in old_node:
-        new_elem = new_node.makeelement('structure', {
-            'name': old_elem[4].text.strip('"').title().replace(',', ''),
-            'acronym': old_elem[3].text.strip(' "'),
-            'id': old_elem[0].text,
-            'level': str(lvl),
-            'filename': '',
-            })
+        new_elem = new_node.makeelement(
+            "structure",
+            {
+                "name": old_elem[4].text.strip('"').title().replace(",", ""),
+                "acronym": old_elem[3].text.strip(' "'),
+                "id": old_elem[0].text,
+                "level": str(lvl),
+                "filename": "",
+            },
+        )
         new_node.append(new_elem)
         try:  # try to get node children and recur
-            _recursively_refactor_default_ontology_node(new_elem, old_elem[10], lvl + 1)
+            _recursively_refactor_default_ontology_node(
+                new_elem, old_elem[10], lvl + 1
+            )
         except IndexError:  # means there are no children
             pass
 
 
-def download_svgs(ontology_folder_info: info_classes.ontology_folder_info_like) -> None:
+def download_svgs(
+    ontology_folder_info: info_classes.ontology_folder_info_like,
+) -> None:
     """
     Downloads svg atlas masks from Allen Brain Institute.
     Names for files and atlas section ids are specified by
@@ -112,10 +126,10 @@ def download_svgs(ontology_folder_info: info_classes.ontology_folder_info_like) 
     ontology_folder_info = info_classes.OntologyFolderInfo(ontology_folder_info)
     save_folder = ontology_folder_info.svgs_folder()
     spec = ontology_folder_info.configuration()
-    kwargs = spec['downloading_arguments']
-    url = spec['downloading_urls']['svg']
-    for name, slice_id in kwargs['svg_names_and_slice_ids'].items():
+    kwargs = spec["downloading_arguments"]
+    url = spec["downloading_urls"]["svg"]
+    for name, slice_id in kwargs["svg_names_and_slice_ids"].items():
         url_complete = url.format(**kwargs, slice_id=slice_id)
-        save_path = (save_folder / name).with_suffix('.svg')
+        save_path = (save_folder / name).with_suffix(".svg")
         urllib.request.urlretrieve(url_complete, save_path)
-        print(f'downloaded: {save_path}')
+        print(f"downloaded: {save_path}")

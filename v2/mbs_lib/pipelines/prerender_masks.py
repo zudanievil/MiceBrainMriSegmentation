@@ -20,9 +20,11 @@ class EmptyMaskException(Exception):
     pass
 
 
-def main(ontology_folder_info: info_classes.ontology_folder_info_like,
-         image_folder_info: info_classes.image_folder_info_like,
-         frames: typing.List[str] = None):
+def main(
+    ontology_folder_info: info_classes.ontology_folder_info_like,
+    image_folder_info: info_classes.image_folder_info_like,
+    frames: typing.List[str] = None,
+):
     """
     This pipeline constructs grayscale png masks
     from Allen Brain Institute atlas sections.
@@ -32,61 +34,89 @@ def main(ontology_folder_info: info_classes.ontology_folder_info_like,
     """
     ontology_folder_info = info_classes.OntologyFolderInfo(ontology_folder_info)
     image_folder_info = info_classes.ImageFolderInfo(image_folder_info)
-    frame_shapes = get_frame_shapes_dict(frames, ontology_folder_info, image_folder_info)
-    config = ontology_folder_info.configuration()['rendering_constants']
+    frame_shapes = get_frame_shapes_dict(
+        frames, ontology_folder_info, image_folder_info
+    )
+    config = ontology_folder_info.configuration()["rendering_constants"]
     inkscape_wrap = InkscapeWrapper.from_config(config)
     assert_no_collisions(ontology_folder_info, frame_shapes)
     for frame, frame_shape in frame_shapes.items():
         ontology_info = ontology_folder_info.ontology_info(frame)
         structure_tree_root = ontology_info.default_tree().getroot()
-        structures = tuple(structure_tree_root.iter('structure'))
+        structures = tuple(structure_tree_root.iter("structure"))
         previous_inspected_structure_level = 0
         previous_structure_not_found = False
-        progress_bar = tqdm.tqdm(leave=False, total=len(structures), file=sys.stdout)
-        progress_bar.set_description_str(f'rendering for {frame}')
+        progress_bar = tqdm.tqdm(
+            leave=False, total=len(structures), file=sys.stdout
+        )
+        progress_bar.set_description_str(f"rendering for {frame}")
         for structure in structures:
-            progress_bar.set_postfix_str(structure.attrib['name'])
+            progress_bar.set_postfix_str(structure.attrib["name"])
             progress_bar.update()
-            structure_level = int(structure.attrib['level'])
-            if previous_structure_not_found and previous_inspected_structure_level < structure_level:
+            structure_level = int(structure.attrib["level"])
+            if (
+                previous_structure_not_found
+                and previous_inspected_structure_level < structure_level
+            ):
                 continue
             try:
                 svg_source_path = ontology_info.svg_path()
-                structure_parents = miscellaneous_utils.get_structure_parents(structure_tree_root, structure.attrib['name'])
-                mask_path_rel, mask_path_abs = compose_structure_path(ontology_info, structure_parents)
+                structure_parents = miscellaneous_utils.get_structure_parents(
+                    structure_tree_root, structure.attrib["name"]
+                )
+                mask_path_rel, mask_path_abs = compose_structure_path(
+                    ontology_info, structure_parents
+                )
                 mask_path_abs.parent.mkdir(exist_ok=True, parents=True)
-                render_structure_mask(inkscape_wrap, svg_source_path, mask_path_abs, structure, frame_shape, config)
-                structure.attrib['filename'] = mask_path_rel.as_posix()
+                render_structure_mask(
+                    inkscape_wrap,
+                    svg_source_path,
+                    mask_path_abs,
+                    structure,
+                    frame_shape,
+                    config,
+                )
+                structure.attrib["filename"] = mask_path_rel.as_posix()
                 previous_structure_not_found = False
             except EmptyMaskException:
-                structure_parents[-2].remove(structure)  # -1 is the structure itself
+                structure_parents[-2].remove(
+                    structure
+                )  # -1 is the structure itself
                 maybe_remove_residual_paths(mask_path_abs)
                 previous_structure_not_found = True
             previous_inspected_structure_level = structure_level
-        print(f"\nTotal found structures {len(tuple(structure_tree_root.iter('structure')))}")
+        print(
+            f"\nTotal found structures {len(tuple(structure_tree_root.iter('structure')))}"
+        )
         progress_bar.close()
         save_structure_tree(structure_tree_root, ontology_info, config)
 
 
-def get_frame_shapes_dict(frames: maybe_string_collection,
-                          ontology_folder_info: info_classes.OntologyFolderInfo,
-                          image_folder_info: info_classes.ImageFolderInfo) -> shape_dict_type:
+def get_frame_shapes_dict(
+    frames: maybe_string_collection,
+    ontology_folder_info: info_classes.OntologyFolderInfo,
+    image_folder_info: info_classes.ImageFolderInfo,
+) -> shape_dict_type:
     """loads shape dict, but only for the specified frames"""
     available_frames = set(ontology_folder_info.frames())
     if frames is not None:
         frames = set(frames)
-        assert frames.issubset(available_frames), \
-            f'not all of {frames} have a corresponding svg file'
+        assert frames.issubset(
+            available_frames
+        ), f"not all of {frames} have a corresponding svg file"
     else:
         frames = available_frames
-    shapes = image_folder_info.configuration()['cropped_image_shapes']
-    assert frames.issubset(shapes), \
-        f'image_folder configuration does not include shapes for all of {frames}'
+    shapes = image_folder_info.configuration()["cropped_image_shapes"]
+    assert frames.issubset(
+        shapes
+    ), f"image_folder configuration does not include shapes for all of {frames}"
     return {f: sh for f, sh in shapes.items() if f in frames}
 
 
-def assert_no_collisions(ontology_folder_info: info_classes.OntologyFolderInfo,
-                         frame_shapes: shape_dict_type):
+def assert_no_collisions(
+    ontology_folder_info: info_classes.OntologyFolderInfo,
+    frame_shapes: shape_dict_type,
+):
     """checks that no prerendered structure masks exist for sections in frame shapes"""
     folder = ontology_folder_info.folder()
     collisions = []
@@ -95,16 +125,21 @@ def assert_no_collisions(ontology_folder_info: info_classes.OntologyFolderInfo,
             collisions.append(frame)
     if collisions:
         raise AssertionError(
-            f'{folder} contains names: {collisions} that will collide with the new subfolders with masks')
+            f"{folder} contains names: {collisions} that will collide with the new subfolders with masks"
+        )
 
 
-def compose_structure_path(ontology_info: info_classes.OntologyInfo,
-                           structure_parents: typing.List[ElementTree.Element]) -> (pathlib.Path, pathlib.Path):
+def compose_structure_path(
+    ontology_info: info_classes.OntologyInfo,
+    structure_parents: typing.List[ElementTree.Element],
+) -> (pathlib.Path, pathlib.Path):
     """makes path for structure.
     :returns path relative to atlas section folder; absolute path"""
-    acronyms = [s.attrib['acronym'] for s in structure_parents]
-    rel_p = pathlib.Path('/'.join(acronyms)) / structure_parents[-1].attrib['name']
-    abs_p = (ontology_info.masks_folder() / rel_p).with_suffix('.png')
+    acronyms = [s.attrib["acronym"] for s in structure_parents]
+    rel_p = (
+        pathlib.Path("/".join(acronyms)) / structure_parents[-1].attrib["name"]
+    )
+    abs_p = (ontology_info.masks_folder() / rel_p).with_suffix(".png")
     return rel_p, abs_p
 
 
@@ -115,8 +150,8 @@ def maybe_remove_residual_paths(png_mask_path: pathlib.Path):
     """
     paths = (
         png_mask_path,
-        png_mask_path.with_suffix('.svg'),
-        png_mask_path.parent
+        png_mask_path.with_suffix(".svg"),
+        png_mask_path.parent,
     )
     for p in paths:
         if p.exists() and p.is_dir():
@@ -125,14 +160,18 @@ def maybe_remove_residual_paths(png_mask_path: pathlib.Path):
             p.unlink()
 
 
-def save_structure_tree(structure_tree_root: ElementTree.Element,
-                        ontology_info: info_classes.OntologyInfo, spec: dict):
+def save_structure_tree(
+    structure_tree_root: ElementTree.Element,
+    ontology_info: info_classes.OntologyInfo,
+    spec: dict,
+):
     p = ontology_info.tree_path()
-    metadata = ElementTree.Element('rendering_info')
+    metadata = ElementTree.Element("rendering_info")
     metadata.attrib = {k: str(v) for k, v in spec.items()}
-    metadata.attrib['time'] = str(datetime.datetime.now())
+    metadata.attrib["time"] = str(datetime.datetime.now())
     structure_tree_root.append(metadata)
-    ElementTree.ElementTree(structure_tree_root).write(p,  encoding='utf-8')
+    ElementTree.ElementTree(structure_tree_root).write(p, encoding="utf-8")
+
 
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # inkscape communication functions
@@ -145,7 +184,9 @@ def execute_cmd(cmd: str, timeout: float = None) -> (str, str, int):
     :param timeout for Popen.communicate
     :returns stdout, stderr, return_code
     """
-    with subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+    with subprocess.Popen(
+        shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ) as p:
         o, e = p.communicate(timeout=timeout)
         r = p.returncode
     o = "" if o is None else o.decode()
@@ -187,6 +228,7 @@ class InkscapeWrapper:
     provides objects for easy calls to inkscape rendering commands.
     serves as config validator and partial application of subprocess calls.
     """
+
     inkscape: str
     cmd_version: "tuple[int]"
     export_cmd: str
@@ -199,62 +241,94 @@ class InkscapeWrapper:
 
         cur_ver = execute_cmd(f"{inkscape} --version")[0].split()[1]
         cur_ver = get_version_tuple(cur_ver)
-        cmd_versions = [(get_version_tuple(x["version"]), x["command"]) for x in c["inkscape_command_versions"]]
+        cmd_versions = [
+            (get_version_tuple(x["version"]), x["command"])
+            for x in c["inkscape_command_versions"]
+        ]
         try:
-            ver, cmd = max(filter(lambda x: x[0] <= cur_ver, cmd_versions), key=lambda x: x[0])
+            ver, cmd = max(
+                filter(lambda x: x[0] <= cur_ver, cmd_versions),
+                key=lambda x: x[0],
+            )
         except ValueError:
-            raise ValueError(f"Could not find suitable command for inkscape version {cur_ver}\n"
-                             f"Supported command versions: {cmd_versions}")
+            raise ValueError(
+                f"Could not find suitable command for inkscape version {cur_ver}\n"
+                f"Supported command versions: {cmd_versions}"
+            )
         return cls(inkscape, ver, cmd, c["svg_crop_id"])
 
-    def do_render(self, svg_path: pathlib.Path, png_path: pathlib.Path, shape: (int, int)):
+    def do_render(
+        self, svg_path: pathlib.Path, png_path: pathlib.Path, shape: (int, int)
+    ):
         cmd = self.export_cmd.format(
-            inkscape=self.inkscape, svg_crop_id=self.svg_crop_id,
-            src_path=svg_path, dst_path=png_path, height=shape[0], width=shape[1])
-        for i in range(3):  # in case rendering fails because of some internal error (had this problem several times)
+            inkscape=self.inkscape,
+            svg_crop_id=self.svg_crop_id,
+            src_path=svg_path,
+            dst_path=png_path,
+            height=shape[0],
+            width=shape[1],
+        )
+        for i in range(
+            3
+        ):  # in case rendering fails because of some internal error (had this problem several times)
             try:
                 execute_cmd(cmd)
                 break
             except subprocess.TimeoutExpired as e:
-                print('Inkscape process timeout', svg_path, file=sys.stderr)
+                print("Inkscape process timeout", svg_path, file=sys.stderr)
                 if i >= 3:
-                    print('Too much timeouts', svg_path, file=sys.stderr)
+                    print("Too much timeouts", svg_path, file=sys.stderr)
                     raise e
+
 
 # :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 # mask rendering functions
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def render_structure_mask(inkscape_wrap: InkscapeWrapper, svg_source_path: pathlib.Path, png_mask_path: pathlib.Path,
-                          structure: ElementTree.Element, frame_shape: (int, int), spec: dict):
+def render_structure_mask(
+    inkscape_wrap: InkscapeWrapper,
+    svg_source_path: pathlib.Path,
+    png_mask_path: pathlib.Path,
+    structure: ElementTree.Element,
+    frame_shape: (int, int),
+    spec: dict,
+):
     """function that does whole rendering process"""
-    svg_mask_path = png_mask_path.with_suffix('.svg')
-    ids = get_structure_ids(structure, spec['include_substructures'])
-    svg_mask_from_ids(svg_source_path, svg_mask_path, ids, spec['svg_crop_id'], tuple(spec['allowed_svg_tag_tails']))
+    svg_mask_path = png_mask_path.with_suffix(".svg")
+    ids = get_structure_ids(structure, spec["include_substructures"])
+    svg_mask_from_ids(
+        svg_source_path,
+        svg_mask_path,
+        ids,
+        spec["svg_crop_id"],
+        tuple(spec["allowed_svg_tag_tails"]),
+    )
     inkscape_wrap.do_render(svg_mask_path, png_mask_path, frame_shape)
-    png_to_grayscale_png(png_mask_path, png_mask_path, spec['min_mask_size'])
+    png_to_grayscale_png(png_mask_path, png_mask_path, spec["min_mask_size"])
     svg_mask_path.unlink()
 
 
-def get_structure_ids(structure: ElementTree.Element, include_substructures: bool) -> typing.Set[str]:
+def get_structure_ids(
+    structure: ElementTree.Element, include_substructures: bool
+) -> typing.Set[str]:
     """gets ids for structures from the tree node"""
     if include_substructures:
         ids = []
-        for substructure in structure.iter('structure'):
-            ids.append(substructure.attrib['id'])
+        for substructure in structure.iter("structure"):
+            ids.append(substructure.attrib["id"])
     else:
-        ids = [structure.attrib['id']]
+        ids = [structure.attrib["id"]]
     return set(ids)
 
 
 def svg_mask_from_ids(
-        svg_path: pathlib.Path,
-        save_path: pathlib.Path,
-        ids: typing.Set[str],
-        crop_id: str,
-        allowed_tag_tails: typing.Tuple[str],
-        ) -> None:
+    svg_path: pathlib.Path,
+    save_path: pathlib.Path,
+    ids: typing.Set[str],
+    crop_id: str,
+    allowed_tag_tails: typing.Tuple[str],
+) -> None:
     """
     Produces temporary svg file (from a copy of atlas section) with only relevant parts left.
     Irrelevant svg objects are removed, background is set to black, remaining objects -- to white.
@@ -264,23 +338,29 @@ def svg_mask_from_ids(
     """
     svg_root = ElementTree.parse(svg_path).getroot()
     empty = True
-    for node in tuple(svg_root.iter()):  # tree iterator misbehaves if you modify the tree inside the loop
-        if node.tag.endswith('namedview'):
-            node.set('pagecolor', "#000000")
+    for node in tuple(
+        svg_root.iter()
+    ):  # tree iterator misbehaves if you modify the tree inside the loop
+        if node.tag.endswith("namedview"):
+            node.set("pagecolor", "#000000")
         try:
-            if node.attrib['structure_id'] in ids:
-                node.set('style', 'stroke:none;fill:#ffffff;fill-opacity:1')
+            if node.attrib["structure_id"] in ids:
+                node.set("style", "stroke:none;fill:#ffffff;fill-opacity:1")
                 empty = False
-            elif node.attrib['structure_id'] == crop_id:
-                node.set('style', 'stroke:none;fill:#000000;fill-opacity:0')
+            elif node.attrib["structure_id"] == crop_id:
+                node.set("style", "stroke:none;fill:#000000;fill-opacity:0")
             else:
-                miscellaneous_utils.remove_node_xml_from_the_tree(svg_root, node)
+                miscellaneous_utils.remove_node_xml_from_the_tree(
+                    svg_root, node
+                )
         except KeyError:
             if not node.tag.endswith(allowed_tag_tails):
-                miscellaneous_utils.remove_node_xml_from_the_tree(svg_root, node)
+                miscellaneous_utils.remove_node_xml_from_the_tree(
+                    svg_root, node
+                )
     if empty:
         raise EmptyMaskException()
-    ElementTree.ElementTree(svg_root).write(save_path,  encoding='utf-8')
+    ElementTree.ElementTree(svg_root).write(save_path, encoding="utf-8")
 
 
 # def svg_mask_to_png(
@@ -311,17 +391,22 @@ def svg_mask_from_ids(
 #                 raise e
 
 
-def png_to_grayscale_png(load_path: pathlib.Path, save_path: pathlib.Path,
-                         min_mask_size: typing.Optional[int] = None):
+def png_to_grayscale_png(
+    load_path: pathlib.Path,
+    save_path: pathlib.Path,
+    min_mask_size: typing.Optional[int] = None,
+):
     """
     Converts a normal png to grayscale, because we need 1 channel only.
     Checks if mask has enough pixels
     """
     img = PIL.Image.open(load_path)
     img.load()
-    img = img.convert('L')
+    img = img.convert("L")
     if min_mask_size is not None:
-        mask = numpy.array(img.getdata(), dtype=numpy.uint8).reshape((img.size[1], img.size[0]))
+        mask = numpy.array(img.getdata(), dtype=numpy.uint8).reshape(
+            (img.size[1], img.size[0])
+        )
         if (mask > 127).sum() < min_mask_size:
             raise EmptyMaskException
     img.save(save_path)

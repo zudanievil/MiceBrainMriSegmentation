@@ -1,8 +1,12 @@
-#python cache:
-**/__pycache__
-**/.ipynb_checkpoints
-# local scripts:
-**/ignore_*
-**/local_*
-# pycharm config
-.idea
+# drafts
+*local_*
+
+# python stuff
+*dist/
+*.egg-info
+*__pycache__/
+*.pytest_cache/
+
+# ide settings
+*.iml
+.idea/

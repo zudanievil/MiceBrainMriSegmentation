@@ -1,0 +1,56 @@
+[project]
+name = "BrainSegmentation"
+version = "3.0.0"
+description = "Custom tool for MRI scan segmentation"
+readme = "README.md"
+# license = "LICENSE"
+requires-python = ">=3.7"
+dependencies = [
+    "toml",
+    "numpy", "scipy", "scikit-image",
+    "pandas", "matplotlib",
+    "jupyter",
+]
+
+authors = [
+    {name = "Some Name", email = "you@yourdomain.com"}, # todo
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+]
+
+[project.optional-dependencies]
+dev = ["black", ]
+test = ["pytest", "pytest-cov"]
+
+#[project.urls]
+#homepage = "todo"
+#documentation = "todo"
+#repository = "todo"
+
+[build-system]
+requires = ["setuptools>=54", "wheel", ]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where =   [".",   ]  # list of folders that contain the packages (["."] by default)
+
+# TESTS
+[tool.pytest.ini_options]
+#addopts = "--cov --cov-report html --cov-report term-missing" # --cov-fail-under 95"
+addopts = "-m 'not visual'"
+# 'visual' tests serve mainly for debugging and demonstration purposes
+minversion = "6.0"
+testpaths = ["tests/", ]
+
+[tool.coverage.run]
+source = ["BrainS/"]
+
+
+# FORMATTING
+[tool.black]
+line-length = 80

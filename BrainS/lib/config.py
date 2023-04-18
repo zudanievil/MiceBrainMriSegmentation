@@ -63,4 +63,3 @@ def __named_tuple(t: type) -> _from_dict_t:
 @get_from_dict_constructor.add_else
 def __multi_dispatch(*_) -> _from_dict_t:
     return from_dict_disp
-
