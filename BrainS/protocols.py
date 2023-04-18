@@ -6,41 +6,9 @@ __all__ = [
     "ImageInfoI",
     "AtlasInfoI",
     "SegmentationInfoI",
-    "impl",
-    "impls",
+    "implements",
+    "get_implementations",
 ]
-
-
-def impl(p: Type[Proto], t: Type[T] = None) -> Opt[Fn[[Type[T]], Type[T]]]:
-    """
-    register implementation. can be used as function or as a decorator:
-    ```
-    @impl(MyProtocol)
-    class MyImplementation: ...
-    ```
-    """
-
-    def clj(t: Type[T]) -> Type[T]:
-        missing = []
-        for k in t.__dict__.keys():
-            if k not in p.__dict__:
-                missing.append(k)
-        if missing:
-            raise KeyError(f"missing methods: {missing}")
-
-        if not hasattr(p, "__protocol_implementations__"):
-            p.__protocol_implementations__ = []
-        p.__protocol_implementations__.append(t)
-        return t
-
-    if t is None:  # as decorator
-        return clj
-    clj(t)  # as function call
-
-
-def impls(p: Type[Proto]) -> List[type]:
-    """show protocol implementation"""
-    return p.__protocol_implementations__  # type: ignore
 
 
 class InfoI(Proto):
@@ -74,6 +42,9 @@ class ImageInfoI(InfoI):
     def metadata(self) -> fs.FileTable:
         ...
 
+    def cropped_images(self) -> fs.FileTable:
+        ...
+
 
 class AtlasInfoI(InfoI):
     def svgs(self) -> fs.FileTable:
@@ -101,3 +72,56 @@ class SegmentationInfoI(InfoI):
 
     def tables_dir(self) -> Path:
         ...
+
+
+# =========== for introspection =====
+
+
+__protocol_special_keys = {
+    "__dict__",
+    "__weakref__",
+    "__parameters__",
+    "_is_protocol",
+    "__subclasshook__",
+    "__init__",
+    "__abstractmethods__",
+    "_abc_impl",
+}
+
+__protocol_implementations = dict()
+
+
+def get_implementations(p: "Type[Proto]") -> set:
+    """show protocol implementations set (new classes are added with `@implements`)"""
+    return __protocol_implementations[p]
+
+
+def implements(
+    p: "Type[Proto]", t: Type[T] = None
+) -> Opt[Fn[[Type[T]], Type[T]]]:
+    """
+    register implementation. can be used as function or as a decorator:
+    ```
+    @implements(MyProtocol)
+    class MyImplementation: ...
+    ```
+    """
+
+    def clj(t: Type[T]) -> Type[T]:
+        impls = __protocol_implementations.setdefault(p, set())
+        if t in impls:
+            return t
+
+        missing = []
+        for k in p.__dict__.keys():
+            if k not in t.__dict__ and k not in __protocol_special_keys:
+                missing.append(k)
+        if missing:
+            raise KeyError(f"missing methods: {missing}")
+
+        impls.add(t)
+        return t
+
+    if t is None:  # as decorator
+        return clj
+    clj(t)  # as function call

@@ -3,6 +3,7 @@ dataset interfaces
 """
 from ..prelude import *
 
+
 __all__ = [
     "File",
     "FileTable",
@@ -55,7 +56,7 @@ class File(Generic[T]):
 
     def __repr__(self):
         m = ",\n\t".join(_meth_fmt(self, "_read", "_write"))
-        return f"File({self.path},\n\t{m}\n)"
+        return f"{self.__class__.__name__}({self.path},\n\t{m}\n)"
 
 
 class FileTable(Generic[K, T]):
@@ -108,4 +109,29 @@ class FileTable(Generic[K, T]):
         m = ",\n\t".join(
             _meth_fmt(self, "format", "unformat", "_read", "_write")
         )
-        return f"FileTable(\n\t{m}\n)"
+        return f"{self.__class__.__name__}(\n\t{m}\n)"
+
+
+class FileFactory(Generic[T]):
+    __slots__ = "read", "write"
+
+    def __init__(
+        self,
+        read: _read_t = not_implemented,
+        write: _write_t = not_implemented,
+    ):
+        self.read = read
+        self.write = write
+
+    def add_read(self, _read: _read_t) -> None:
+        self.read = _read
+
+    def add_write(self, _write: _write_t) -> None:
+        self.write = _write
+
+    def __repr__(self):
+        m = ",\n\t".join(_meth_fmt(self, "read", "write"))
+        return f"{self.__class__.__name__}(\n\t{m}\n)"
+
+    def __call__(self, file: Path) -> File[T]:
+        return File(file, self.read, self.write)

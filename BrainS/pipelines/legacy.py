@@ -1,5 +1,43 @@
 from ..prelude import *
 from .. import protocols as proto
+from ..lib import filesystem as fs
+
+
+@proto.implements(proto.InfoI)
+@proto.implements(proto.ImageInfoI)
+class ImageDirInfo:  # implements
+    __slots__ = ("_path",)
+
+    def path(self) -> Path:
+        return self._path
+
+    def __fspath__(self) -> str:
+        return str(self._path)
+
+    def config(self) -> fs.File:
+        ...
+
+    def default_config(self) -> fs.File:
+        ...
+
+    def __repr__(self) -> str:
+        ...
+
+    @classmethod
+    def from_path(self, folder: Path) -> "InfoI":
+        ...
+
+    def create(self) -> "InfoI":
+        ...
+
+    def images(self) -> fs.FileTable:
+        ...
+
+    def metadata(self) -> fs.FileTable:
+        ...
+
+    def cropped_images(self) -> fs.FileTable:
+        ...
 
 
 # @proto.impl(proto.ImageInfoI)
