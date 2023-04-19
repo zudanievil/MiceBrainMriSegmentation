@@ -1,5 +1,6 @@
-from BrainS.prelude import *
-from BrainS.lib import filesystem as fs
+from .prelude import *
+from .lib import filesystem as fs, io_utils as io
+from ._version import __version__
 
 __all__ = [
     "InfoI",
@@ -11,7 +12,53 @@ __all__ = [
 ]
 
 
+
+class InfoDirTag(NamedTuple):
+    class_tag: str
+    kwargs: dict
+
+    @classmethod
+    def new(cls, class_tag: str, **kwargs) -> "InfoDirTag":
+        return cls(class_tag, kwargs)
+
+
+TagFileFactory = fs.FileFactory()
+
+
+@TagFileFactory.add_read
+def __(path) -> InfoDirTag:
+    return InfoDirTag.new(**io.read_toml(path))
+
+
+@TagFileFactory.add_write
+def __(path, value: InfoDirTag) -> None:
+    d = value.kwargs.copy()
+    d[value._fields[0]] = value.class_tag
+    io.write_toml(path, d)
+
+
 class InfoI(Proto):
+    TAG: str = ""
+    """unique string identifier of a class. should be persistent over versions"""
+    TAG_FILE_NAME = ".BrainS_directory_info.toml"
+
+    def tag(self) -> InfoDirTag:
+        """create a tag object for writing"""
+        return InfoDirTag.new(self.TAG, about=cfg.about, version=cfg.__version__)
+
+    def tag_file(self) -> fs.File[InfoDirTag]:
+        """create fs.File to mark directory"""
+        return TagFileFactory(self.path() / self.TAG_FILE_NAME)
+
+    @classmethod
+    def read_from(cls, directory: Path, **options) -> "InfoI":
+        """
+        the idea is that this method can produce some sort of validation,
+        at the very minimum it should assert that the directory exists.
+        this method, potentially, can do io and stuff.
+        """
+        ...
+
     def path(self) -> Path:
         ...
 
@@ -27,11 +74,7 @@ class InfoI(Proto):
     def __repr__(self) -> str:
         ...
 
-    @classmethod
-    def from_path(self, folder: Path) -> "InfoI":
-        ...
-
-    def create(self) -> "InfoI":
+    def create(self) -> None:
         ...
 
 
@@ -72,6 +115,7 @@ class SegmentationInfoI(InfoI):
 
     def tables_dir(self) -> Path:
         ...
+# =========== some shared functionality ======
 
 
 # =========== for introspection =====
@@ -125,3 +169,5 @@ def implements(
     if t is None:  # as decorator
         return clj
     clj(t)  # as function call
+
+# ================

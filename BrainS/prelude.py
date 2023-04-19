@@ -16,8 +16,12 @@ from typing import (
     Generic,
     NamedTuple,
     Type,
+    Any,
+    Iterable,
+    Iterator,
 )
 from pathlib import Path
+from . import __config as cfg
 
 
 T = _TV("T")
@@ -48,6 +52,14 @@ class Err(Exception):
 def is_err(x) -> bool:
     """:return type(x) == Err"""
     return type(x) == Err
+
+
+def raise_(error) -> None:
+    raise error
+
+
+def not_implemented(*_, **__):
+    raise NotImplementedError
 
 
 def do_it(f: Fn[[], T]) -> T:
@@ -82,5 +94,28 @@ def ipyformat() -> "IPython.core.formatters.PlainTextFormatter":
     return _PTF()
 
 
-def not_implemented(*_, **__):
-    raise NotImplementedError
+def repr_slots(obj) -> str:  # pretty slow !40-50 µs, but generic
+    """pretty-print an object with __slots__"""
+    assert hasattr(obj, "__slots__"), f"{obj} does not have '__slots__'"
+    cls = obj.__class__
+    cls_name = f"{cls.__module__}.{cls.__name__}"
+    slots = obj.__slots__
+
+    fslots = []
+    for name in slots:
+        value = getattr(obj, name)
+        if (value is not_implemented) or (value is ...):
+            continue
+        fslots.append(f"{name} = {ipyformat(value)}" )
+    fslots = ",\n\t".join(fslots)
+    return f"{cls_name}(\n\t{fslots}\n)"
+
+
+class Box(Generic[T]):
+    __slots__ = "data",
+
+    def __init__(self, data: T = None):
+        self.data = data
+
+    __repr__ = repr_slots
+

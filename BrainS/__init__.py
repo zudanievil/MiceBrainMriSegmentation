@@ -1,4 +1,5 @@
 from .prelude import *
+from ._version import __version__, version_tuple
 
-version_tuple = (3, 0, 0)
-__version__ = ".".join(str(v) for v in version_tuple)
+cfg.__version__ = __version__
+cfg.version_tuple = version_tuple

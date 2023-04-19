@@ -17,10 +17,13 @@ from xml.etree import ElementTree
 import PIL
 from copy import deepcopy
 
+from BrainS.prelude import cfg as _future_cfg
+
 # constants
-_DEFAULT_FOLDER_CONFIGURATIONS_STORAGE = (
-    Path(__file__).parent.parent / "folder_configurations_default"
-)
+# _DEFAULT_FOLDER_CONFIGURATIONS_STORAGE = (
+#     Path(__file__).parent.parent / "folder_configurations_default"
+# ) # paths to default configs are now configured by `_future_cfg`
+
 _ONTOLOGY_FOLDER_CONFIGURATION_NAME = "ontology_folder_configuration.yml"
 _IMAGE_FOLDER_CONFIGURATION_NAME = "image_folder_configuration.yml"
 _RESULTS_FOLDER_CONFIGURATION_NAME = "results_folder_configuration.yml"
@@ -99,10 +102,7 @@ class OntologyFolderInfo:
         for k, v in self.__class__.__dict__.items():
             if k.endswith("folder") and k not in self.__slots__:
                 v(self).mkdir(parents=True, exist_ok=True)
-        form_src = (
-            _DEFAULT_FOLDER_CONFIGURATIONS_STORAGE
-            / _ONTOLOGY_FOLDER_CONFIGURATION_NAME
-        )
+        form_src = ( _future_cfg.resource_dir / "v2" / _ONTOLOGY_FOLDER_CONFIGURATION_NAME)  # type: ignore
         form_dst = self.configuration_path()
         shutil.copy(form_src, form_dst)
 
@@ -284,10 +284,7 @@ class ImageFolderInfo:
         for k, v in self.__class__.__dict__.items():
             if k.endswith("folder") and k not in self.__slots__:
                 v(self).mkdir(parents=True, exist_ok=True)
-        spec_src = (
-            _DEFAULT_FOLDER_CONFIGURATIONS_STORAGE
-            / _IMAGE_FOLDER_CONFIGURATION_NAME
-        )
+        spec_src = (_future_cfg.resource_dir / "v2" / _IMAGE_FOLDER_CONFIGURATION_NAME)  # type: ignore
         spec_dst = self.configuration_path()
         shutil.copy(spec_src, spec_dst)
 
@@ -487,10 +484,7 @@ class SegmentationResultFolderInfo:
         for k, v in self.__class__.__dict__.items():
             if k.endswith("folder") and k not in self.__slots__:
                 v(self).mkdir(parents=True, exist_ok=True)
-        src = (
-            _DEFAULT_FOLDER_CONFIGURATIONS_STORAGE
-            / _RESULTS_FOLDER_CONFIGURATION_NAME
-        )
+        src = (_future_cfg.resource_dir / "v2" / _RESULTS_FOLDER_CONFIGURATION_NAME)  # type: ignore
         dst = self.configuration_path()
         with src.open("rt") as f:
             text = f.read()
