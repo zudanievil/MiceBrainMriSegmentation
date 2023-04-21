@@ -58,6 +58,10 @@ def raise_(error) -> None:
     raise error
 
 
+def identity(x: T) -> T:
+    return x
+
+
 def setitem(obj, key, value):
     obj[key] = value
 
