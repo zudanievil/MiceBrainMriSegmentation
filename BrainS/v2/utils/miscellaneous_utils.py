@@ -32,9 +32,7 @@ def delete_folder(folder: pathlib.Path):
     folder.rmdir()
 
 
-def find_file(
-    fname_start: str, folder: pathlib.Path
-) -> pathlib.Path:  # TODO: rewrite for fname_regex
+def find_file(fname_start: str, folder: pathlib.Path) -> pathlib.Path:
     for p in folder.iterdir():
         if p.is_dir():
             result = find_file(fname_start, p)

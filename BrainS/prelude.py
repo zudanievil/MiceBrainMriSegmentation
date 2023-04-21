@@ -5,7 +5,7 @@ used as `from prelude import *`
 import sys
 import os
 from typing import (
-    TypeVar as _TV,
+    TypeVar,
     Callable as Fn,
     Optional as Opt,
     Protocol as Proto,
@@ -24,11 +24,11 @@ from pathlib import Path
 from . import __config as cfg
 
 
-T = _TV("T")
-T1 = _TV("T1")
-T2 = _TV("T2")
-K = _TV("K")
-V = _TV("V")
+T = TypeVar("T")
+T1 = TypeVar("T1")
+T2 = TypeVar("T2")
+K = TypeVar("K")
+V = TypeVar("V")
 
 
 class Err(Exception):
@@ -56,6 +56,10 @@ def is_err(x) -> bool:
 
 def raise_(error) -> None:
     raise error
+
+
+def setitem(obj, key, value):
+    obj[key] = value
 
 
 def not_implemented(*_, **__):
@@ -106,16 +110,15 @@ def repr_slots(obj) -> str:  # pretty slow !40-50 µs, but generic
         value = getattr(obj, name)
         if (value is not_implemented) or (value is ...):
             continue
-        fslots.append(f"{name} = {ipyformat(value)}" )
+        fslots.append(f"{name} = {ipyformat(value)}")
     fslots = ",\n\t".join(fslots)
     return f"{cls_name}(\n\t{fslots}\n)"
 
 
 class Box(Generic[T]):
-    __slots__ = "data",
+    __slots__ = ("data",)
 
     def __init__(self, data: T = None):
         self.data = data
 
     __repr__ = repr_slots
-

@@ -5,7 +5,7 @@ PROJ_NAME=BrainSegmentation
 default_test:
 	pytest -c pyproject.toml
 visual_tests:
-	pytest src/tests -m 'visual'
+	pytest tests/* -m 'visual'
 build_package:
 	python -m build
 clean_after_build:

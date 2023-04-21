@@ -102,7 +102,7 @@ class OntologyFolderInfo:
         for k, v in self.__class__.__dict__.items():
             if k.endswith("folder") and k not in self.__slots__:
                 v(self).mkdir(parents=True, exist_ok=True)
-        form_src = ( _future_cfg.resource_dir / "v2" / _ONTOLOGY_FOLDER_CONFIGURATION_NAME)  # type: ignore
+        form_src = _future_cfg.resource_dir / "v2" / _ONTOLOGY_FOLDER_CONFIGURATION_NAME  # type: ignore
         form_dst = self.configuration_path()
         shutil.copy(form_src, form_dst)
 
@@ -284,7 +284,7 @@ class ImageFolderInfo:
         for k, v in self.__class__.__dict__.items():
             if k.endswith("folder") and k not in self.__slots__:
                 v(self).mkdir(parents=True, exist_ok=True)
-        spec_src = (_future_cfg.resource_dir / "v2" / _IMAGE_FOLDER_CONFIGURATION_NAME)  # type: ignore
+        spec_src = _future_cfg.resource_dir / "v2" / _IMAGE_FOLDER_CONFIGURATION_NAME  # type: ignore
         spec_dst = self.configuration_path()
         shutil.copy(spec_src, spec_dst)
 
@@ -484,7 +484,7 @@ class SegmentationResultFolderInfo:
         for k, v in self.__class__.__dict__.items():
             if k.endswith("folder") and k not in self.__slots__:
                 v(self).mkdir(parents=True, exist_ok=True)
-        src = (_future_cfg.resource_dir / "v2" / _RESULTS_FOLDER_CONFIGURATION_NAME)  # type: ignore
+        src = _future_cfg.resource_dir / "v2" / _RESULTS_FOLDER_CONFIGURATION_NAME  # type: ignore
         dst = self.configuration_path()
         with src.open("rt") as f:
             text = f.read()

@@ -12,7 +12,6 @@ __all__ = [
 ]
 
 
-
 class InfoDirTag(NamedTuple):
     class_tag: str
     kwargs: dict
@@ -44,7 +43,9 @@ class InfoI(Proto):
 
     def tag(self) -> InfoDirTag:
         """create a tag object for writing"""
-        return InfoDirTag.new(self.TAG, about=cfg.about, version=cfg.__version__)
+        return InfoDirTag.new(
+            self.TAG, about=cfg.about, version=cfg.__version__
+        )
 
     def tag_file(self) -> fs.File[InfoDirTag]:
         """create fs.File to mark directory"""
@@ -115,6 +116,8 @@ class SegmentationInfoI(InfoI):
 
     def tables_dir(self) -> Path:
         ...
+
+
 # =========== some shared functionality ======
 
 
@@ -169,5 +172,6 @@ def implements(
     if t is None:  # as decorator
         return clj
     clj(t)  # as function call
+
 
 # ================

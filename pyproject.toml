@@ -41,11 +41,13 @@ where =   [".",   ]  # list of folders that contain the packages (["."] by defau
 
 # TESTS
 [tool.pytest.ini_options]
+markers = [
+    "visual: tests that require user oversight (plots, textual output, etc)",
+]
 #addopts = "--cov --cov-report html --cov-report term-missing" # --cov-fail-under 95"
 addopts = "-m 'not visual'"
-# 'visual' tests serve mainly for debugging and demonstration purposes
 minversion = "6.0"
-testpaths = ["tests/", ]
+testpaths = ["tests/*", ]
 
 [tool.coverage.run]
 source = ["BrainS/"]

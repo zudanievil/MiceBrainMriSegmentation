@@ -8,6 +8,7 @@ from ..lib import filesystem as fs, io_utils as io, config_utils
 
 # <editor-fold desc="InfoI implementations">
 
+
 def _create_v2_compat_info(obj: proto.InfoI):
     """preferred way to create data directories"""
     assert not obj.path().exists()
@@ -49,10 +50,14 @@ class ImageDirInfo:
 
     @staticmethod
     def default_config() -> fs.File:
-        return io.YamlFile(cfg.resource_dir / "v2/image_folder_configuration.yml")
+        return io.YamlFile(
+            cfg.resource_dir / "v2/image_folder_configuration.yml"
+        )
 
     @classmethod
-    def read_from(cls, directory: Path, *, fix_tag=True, check_naming=False) -> "ImageDirInfo":
+    def read_from(
+        cls, directory: Path, *, fix_tag=True, check_naming=False
+    ) -> "ImageDirInfo":
         assert directory.exists()
         self = cls(directory)
         assert Path(self.config().path).exists()
@@ -79,10 +84,15 @@ class ImageDirInfo:
     def cropped_image_dir(self) -> Path:
         return self._path / "img_cropped"
 
-    def raw_images(self, dtype="<i4", shape=(256, 256)) -> fs.FileTable[str, io.np.ndarray]:
+    def raw_images(
+        self, dtype="<i4", shape=(256, 256)
+    ) -> fs.FileTable[str, io.np.ndarray]:
         def read_raw(path) -> io.np.ndarray:
             return io.np.fromfile(path, dtype=dtype).reshape(shape)
-        return fs.PrefixSuffixFormatter(self.raw_image_dir(), suffix="").to_FileTable(read_raw)
+
+        return fs.PrefixSuffixFormatter(
+            self.raw_image_dir(), suffix=""
+        ).to_FileTable(read_raw)
 
     def images(self) -> fs.FileTable[str, io.np.ndarray]:
         return io.NpyDir(self.image_dir())
@@ -107,16 +117,24 @@ class ImageDirInfo:
         if inconsistent, `raise Err(non_existent_keys)`
         """
         proto_tables = [
-            (di(self).name, ft) for (ft, di) in self.__DS_METHS
-            if di(self).exists() and not (ft is None or fs.is_empty_dir(di(self)))
+            (di(self).name, ft)
+            for (ft, di) in self.__DS_METHS
+            if di(self).exists()
+            and not (ft is None or fs.is_empty_dir(di(self)))
         ]
         if len(proto_tables) < 2:
             return  # nothing to check
-        tables: List[Tuple[str, fs.FileTable]] = [(name, ft(self)) for name, ft in proto_tables]
+        tables: List[Tuple[str, fs.FileTable]] = [
+            (name, ft(self)) for name, ft in proto_tables
+        ]
         head = tables[0][1]
         non_existent = []
         for key in head.keys():
-            non_existent.extend((name, key) for name, ft in tables if not Path(ft.format(key)).exists())
+            non_existent.extend(
+                (name, key)
+                for name, ft in tables
+                if not Path(ft.format(key)).exists()
+            )
         if non_existent:
             raise Err(non_existent)
 
@@ -145,7 +163,9 @@ class SegmentationDirInfo:
 def collect_image_metadata(image_dir: os.PathLike) -> List[Err]:
     image_dir = ImageDirInfo.read_from(Path(image_dir))
     c = image_dir.config().read()
-    read_pre_meta = __pre_meta_reader(image_dir.pre_meta_dir(), c["metadata_keys"], c["file_name_fields"])
+    read_pre_meta = __pre_meta_reader(
+        image_dir.pre_meta_dir(), c["metadata_keys"], c["file_name_fields"]
+    )
     metas = image_dir.metas()
     keys = image_dir.raw_images().keys()
     # del c, image_dir
@@ -160,7 +180,9 @@ def collect_image_metadata(image_dir: os.PathLike) -> List[Err]:
     return errors
 
 
-def __pre_meta_reader(prefix: Path, metadata_keys: dict, field_names: List[str]) -> Fn[[str], Union[dict, Err]]:
+def __pre_meta_reader(
+    prefix: Path, metadata_keys: dict, field_names: List[str]
+) -> Fn[[str], Union[dict, Err]]:
     config_list = [
         # key, dtype, indexing array
         (k, np.dtype(v["dtype"]), np.array(v["indices"], dtype=int))
@@ -173,17 +195,21 @@ def __pre_meta_reader(prefix: Path, metadata_keys: dict, field_names: List[str])
         for meta_key, dt, idx in config_list:
             p = prefix / f"{k}_{meta_key}.txt"
             if not p.exists():
-                return Err((k, meta_key, FileExistsError, p))  # I've warned, it would be very unpythonic! )
+                return Err(
+                    (k, meta_key, FileExistsError, p)
+                )  # I've warned, it would be very unpythonic! )
             try:
                 chunck = np.fromfile(p, sep="\t")[idx].astype(dt).tolist()
                 d[k] = chunck if len(chunck) > 1 else chunck[0]
             except Exception as e:
                 return Err((k, meta_key, type(e), e.args))
         return d
+
     return clj
 
 
 # </editor-fold>
+
 
 def raw_images_to_npy(image_dir: os.PathLike, dtype="<i4", shape=(256, 256)):
     image_dir = ImageDirInfo.read_from(Path(image_dir))
@@ -199,12 +225,18 @@ def raw_images_to_npy(image_dir: os.PathLike, dtype="<i4", shape=(256, 256)):
 
 
 # <editor-fold description="crop images">
-def crop_images(img_dir: ImageDirInfo): ...
+def crop_images(img_dir: ImageDirInfo):
+    ...
+
 
 # </editor-fold>
 
+
 # <editor-fold description="average cropped images">
-def average_cropped_images(): ...
+def average_cropped_images():
+    ...
+
+
 # </editor-fold>
 
 # <editor-fold description="download svgs">
@@ -212,11 +244,16 @@ def average_cropped_images(): ...
 
 class atlas_download:
     @staticmethod
-    def slice_ids_table(): ...
+    def slice_ids_table():
+        ...
+
     @staticmethod
-    def default_ontology(): ...
+    def default_ontology():
+        ...
+
     @staticmethod
-    def svgs(): ...
+    def svgs():
+        ...
 
 
 # </editor-fold>
@@ -224,7 +261,8 @@ class atlas_download:
 # <editor-fold description="prerender masks">
 
 
-def prerender_masks(atlas_dir: AtlasDirInfo): ...
+def prerender_masks(atlas_dir: AtlasDirInfo):
+    ...
 
 
 # </editor-fold>

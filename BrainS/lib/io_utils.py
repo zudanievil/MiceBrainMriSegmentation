@@ -89,17 +89,25 @@ NpyFile: fs.FileFactory[np.ndarray] = fs.FileFactory(read_npy, write_npy)
 Analyze75File = fs.FileFactory(read_analyze75)  # type: ignore
 
 
-def NpyDir(prefix: os.PathLike, file_suffix: str = ".npy") -> fs.FileTable[str, np.ndarray]:
-    return fs.PrefixSuffixFormatter(Path(prefix), file_suffix) \
-        .to_FileTable(read_npy, write_npy)
+def NpyDir(
+    prefix: os.PathLike, file_suffix: str = ".npy"
+) -> fs.FileTable[str, np.ndarray]:
+    return fs.PrefixSuffixFormatter(Path(prefix), file_suffix).to_FileTable(
+        read_npy, write_npy
+    )
 
 
-def YamlDir(prefix: os.PathLike, file_suffix: str = ".yml") -> fs.FileTable[str, Yaml]:
-    return fs.PrefixSuffixFormatter(Path(prefix), file_suffix)\
-        .to_FileTable(read_yaml, write_yaml)
+def YamlDir(
+    prefix: os.PathLike, file_suffix: str = ".yml"
+) -> fs.FileTable[str, Yaml]:
+    return fs.PrefixSuffixFormatter(Path(prefix), file_suffix).to_FileTable(
+        read_yaml, write_yaml
+    )
 
 
-def TomlDir(prefix: os.PathLike, file_suffix: str = ".toml") -> fs.FileTable[str, Toml]:
-    return fs.PrefixSuffixFormatter(Path(prefix), file_suffix) \
-        .to_FileTable(read_toml, write_toml)
-
+def TomlDir(
+    prefix: os.PathLike, file_suffix: str = ".toml"
+) -> fs.FileTable[str, Toml]:
+    return fs.PrefixSuffixFormatter(Path(prefix), file_suffix).to_FileTable(
+        read_toml, write_toml
+    )

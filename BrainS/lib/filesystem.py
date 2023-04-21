@@ -2,6 +2,7 @@
 dataset interfaces
 """
 from ..prelude import *
+
 PathLike = os.PathLike
 
 __all__ = [
@@ -30,7 +31,11 @@ _keys_t = Fn[[], Iterable[K]]
 
 
 class File(Generic[T]):
-    __slots__ = "path", "_read", "_write",
+    __slots__ = (
+        "path",
+        "_read",
+        "_write",
+    )
 
     def __init__(
         self,
@@ -144,6 +149,7 @@ class PrefixSuffixFormatter(NamedTuple):
     suffix can be any valid part of a file name (does not have to start with ".")
     empty suffix means that no filtering on suffix is done and nothing is added to file name
     """
+
     prefix: Path
     suffix: str = ""
 
@@ -155,7 +161,7 @@ class PrefixSuffixFormatter(NamedTuple):
             return path.stem
         else:
             name_suf = str(path).rsplit(os.pathsep, 1)[1]
-            return name_suf[:-len(self.suffix)] if self.suffix else name_suf
+            return name_suf[: -len(self.suffix)] if self.suffix else name_suf
 
     def keys(self) -> Iterator[str]:
         no_suffix = not self.suffix
@@ -167,9 +173,11 @@ class PrefixSuffixFormatter(NamedTuple):
                 continue
             ps = str(p)
             if ps.endswith(self.suffix):
-                yield ps[:-len(self.suffix)]
+                yield ps[: -len(self.suffix)]
 
-    def to_FileTable(self, read: _read_t = not_implemented, write: _write_t = not_implemented) -> FileTable[str, T]:
+    def to_FileTable(
+        self, read: _read_t = not_implemented, write: _write_t = not_implemented
+    ) -> FileTable[str, T]:
         return FileTable(self.format, self.unformat, self.keys, read, write)
 
 
@@ -177,4 +185,3 @@ def is_empty_dir(path: Path) -> bool:
     for _ in path.iterdir():
         return False
     return True
-

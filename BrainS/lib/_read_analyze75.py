@@ -98,7 +98,7 @@ def read_analyze75(
     if type(dtype) == str:
         raise TypeError(f"Unsupported data type {dtype}")
     dim = meta["dim"]
-    shape = dim[1: dim[0] + 1]
+    shape = dim[1 : dim[0] + 1]
     x = _np.fromfile(p.with_suffix(".img"), dtype=dtype).reshape(shape)
     x = x if transpose is None else x.transpose(transpose)
     x = _np.squeeze(x) if squeeze else x

@@ -16,4 +16,3 @@ about = "https://github.com/zudanievil/MiceBrainMriSegmentation/tree/v3"
 
 __version__ = "set from _version.py at runtime"
 version_tuple = "set from _version.py at runtime"
-
