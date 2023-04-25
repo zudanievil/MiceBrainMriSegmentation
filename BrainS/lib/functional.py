@@ -143,11 +143,6 @@ class Dispatch:
         )
 
 
-def _none(*_, **__):
-    """return None"""
-    return None
-
-
 class Classifier:
     """
     works as dynamically extendable match statement
@@ -160,7 +155,7 @@ class Classifier:
         self.name = name
         self.doc = doc
         self.arms = []
-        self.else_ = _none
+        self.else_ = none
 
     def add_else(self, else_: Fn) -> "Classifier":
         self.else_ = else_
@@ -210,3 +205,7 @@ class Classifier:
             + "\n\t".join(ipyformat(arm) for arm in self.arms)
             + f"\nelse: {ipyformat(self.else_)}"
         )
+
+
+# it is impressive, how easy it is to build such adaptable dispatches from scraps.
+# contrary to the oop dispatch, which is neither versatile, nor easy to build.

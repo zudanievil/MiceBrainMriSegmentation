@@ -1,4 +1,4 @@
-from .. prelude import *
+from ..prelude import *
 from BrainS.lib.iterators import *
 from xml.etree.ElementTree import Element
 
@@ -74,11 +74,11 @@ class XMLFlatNode(NamedTuple):
         return cls(x.tag, x.attrib)
 
     def to_xml(self) -> Element:
-        assert type(self) == XMLFlatNode # for debug
+        assert type(self) == XMLFlatNode  # for debug
         return Element(self.tag, self.attrib)
 
     def __repr__(self):
-        d = " ".join(f"{k}=\"{v}\"" for k, v in self.attrib.items())
+        d = " ".join(f'{k}="{v}"' for k, v in self.attrib.items())
         return f"<{self.tag} {d}/>"
 
 
@@ -88,7 +88,7 @@ class XMLTree:
         return type(x) == Element and len(x) != 0
 
     @staticmethod
-    def head_tail_iter(xs: Element) -> Iterator[T]:
+    def head_tail_iter(xs: Element) -> Iterator[XMLFlatNode]:
         yield XMLFlatNode.from_xml(xs)
         yield from xs
 

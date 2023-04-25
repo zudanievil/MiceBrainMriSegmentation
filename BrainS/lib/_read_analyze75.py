@@ -103,3 +103,12 @@ def read_analyze75(
     x = x if transpose is None else x.transpose(transpose)
     x = _np.squeeze(x) if squeeze else x
     return x, meta
+
+
+def is_analyze75(path) -> bool:
+    p = _Path(path)
+    return (
+        (p.is_file() or not p.exists())
+        and p.with_suffix(".hdr").exists()
+        and p.with_suffix(".img").exists()
+    )

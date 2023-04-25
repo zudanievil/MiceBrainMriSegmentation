@@ -22,11 +22,6 @@ def is_iterable(any) -> bool:
     return hasattr(any, "__iter__")
 
 
-def foreach(itr: Iterable) -> None:
-    for _ in itr:
-        pass
-
-
 def take(n: int, itr: Iterable[T]) -> Iterator[T]:
     return islice(itr, 0, n)
 
@@ -86,7 +81,6 @@ def unfold(
         if start == sentinel:
             break
         yield start
-
 
 
 class Brace(NamedTuple):

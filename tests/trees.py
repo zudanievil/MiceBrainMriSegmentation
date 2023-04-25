@@ -6,7 +6,9 @@ from BrainS.lib.iterators import *
 from BrainS.lib.trees import *
 
 
-FIX_RANDOM_SEED = not os.getenv("RANDOM_TESTS")  # disable randomness unless RANDOM_TESTS in environment
+FIX_RANDOM_SEED = not os.getenv(
+    "RANDOM_TESTS"
+)  # disable randomness unless RANDOM_TESTS in environment
 RANDOM_SEED = 42  # applies only when FIX_RANDOM_SEED
 RANDOM_TEST_REPETITIONS = 100
 
@@ -103,9 +105,9 @@ def test_Tree_filter():
         ft3 = random_ftree(mk_lst(60, 70))
         pt2 = random.randint(1, len(ft) // 3 * 2)
         pt3 = random.randint(pt2, len(ft) - 1)
-        while type(ft[pt2-1]) == Brace:
+        while type(ft[pt2 - 1]) == Brace:
             pt2 += 1
-        while type(ft[pt3-1]) == Brace:
+        while type(ft[pt3 - 1]) == Brace:
             pt3 -= 1
         if pt2 > pt3:
             pt2, pt3 = pt3, pt2  # braces get messed up if pt2 > pt3
@@ -123,12 +125,12 @@ def test_XML_flatten_eq_unflatten():
     tags = list(TAGS)
     for _ in rand_loop():
         tag_ftree = random_ftree(tags)
-        tag_to_flat_node = flat_tree_lift(lambda t: XMLFlatNode(t, {"a": "x", "b": "y"}))
+        tag_to_flat_node = flat_tree_lift(
+            lambda t: XMLFlatNode(t, {"a": "x", "b": "y"})
+        )
         xml_ftree = list(map(tag_to_flat_node, tag_ftree))
         xml = XMLTree.unflatten(xml_ftree)[0]
         xml_ftree2 = list(XMLTree.flatten(xml))
         xml2 = XMLTree.unflatten(xml_ftree2)[0]
         xml_ftree3 = list(XMLTree.flatten(xml2))
         assert xml_ftree2 == xml_ftree3
-
-

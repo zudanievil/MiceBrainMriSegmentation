@@ -1,7 +1,9 @@
 """
 dataset interfaces
 """
+
 from ..prelude import *
+from .iterators import Flattener
 
 PathLike = os.PathLike
 
@@ -9,7 +11,13 @@ __all__ = [
     "File",
     "FileTable",
     "FileFactory",
+    "PrefixSuffixFormatter",
     "is_empty_dir",
+    "common_prefix",
+    "common_parts",
+    "super_relative",
+    "iter_tree",
+    "iter_tree_braces",
 ]
 
 _read_t = Fn[[PathLike], T]
@@ -17,17 +25,6 @@ _write_t = Fn[[PathLike, T], None]
 _format_t = Fn[[K], PathLike]
 _unformat_t = Fn[[PathLike], K]
 _keys_t = Fn[[], Iterable[K]]
-
-
-# def _meth_fmt(obj, *methods: str) -> List[str]:
-#     """for formatting callable fields"""
-#     ret = []
-#     for meth in methods:
-#         fn = getattr(obj, meth)
-#         if fn == not_implemented:
-#             continue
-#         ret.append(f"{meth} = {ipyformat(fn)}")
-#     return ret
 
 
 class File(Generic[T]):
@@ -168,12 +165,11 @@ class PrefixSuffixFormatter(NamedTuple):
         for p in self.prefix.iterdir():
             if not p.is_file():
                 continue
+            pn = p.name
             if no_suffix:
-                yield p.name
-                continue
-            ps = str(p)
-            if ps.endswith(self.suffix):
-                yield ps[: -len(self.suffix)]
+                yield pn
+            elif pn.endswith(self.suffix):
+                yield pn[: -len(self.suffix)]
 
     def to_FileTable(
         self, read: _read_t = not_implemented, write: _write_t = not_implemented
@@ -185,3 +181,64 @@ def is_empty_dir(path: Path) -> bool:
     for _ in path.iterdir():
         return False
     return True
+
+
+def common_parts(p0: Path, p1: Path) -> Opt[int]:
+    """:return None if paths don'ptr have same anchor else i such that
+    `p0.parts[:i]` (`== p1.parts[:i]`) is the common part of both paths"""
+    if p0.anchor != p1.anchor:
+        return None
+    pts0 = p0.parts
+    pts1 = p1.parts
+    i = 0
+    for i, (pt0, pt1) in enumerate(zip(pts0, pts1)):
+        if pt0 != pt1:
+            break
+    return i
+
+
+def super_relative(parent: Path, child: Path) -> Opt[Path]:
+    """
+    :return `p`, such that `(parent / p).resolve() == child`
+    return None if paths have different anchors
+    """
+    i = common_parts(parent, child)
+    if i is None:
+        return None
+    pts_c = child.parts
+    up = len(parent.parts) - i
+    return Path("../" * up + "/".join(pts_c[i:]))
+
+
+def common_prefix(p0: Path, p1: Path) -> Opt[Path]:  # TODO: test
+    i = common_parts(p0, p1)
+    if i is None:
+        return None
+    return p0.parents[i]
+
+
+def __dir_has_children(x):
+    return type(x) != Box and x.is_dir()
+
+
+def __dir_head_tail_iter(d: Path) -> Iterator[Box[Path]]:
+    yield Box(d)  # shield head
+    yield from d.iterdir()
+
+
+def __dir_unwrap(d: Union[Path, Box[Path]]) -> Path:
+    return d.data if type(d) == Box else d
+
+
+iter_tree = Flattener(
+    braces=False,
+    has_children=__dir_has_children,
+    get_children=__dir_head_tail_iter,
+    leaf_unwrap=__dir_unwrap,
+)
+iter_tree_braces = Flattener(
+    braces=True,
+    has_children=__dir_has_children,
+    get_children=__dir_head_tail_iter,
+    leaf_unwrap=__dir_unwrap,
+)
