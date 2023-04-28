@@ -52,11 +52,13 @@ class InfoI(Proto):
         return TagFileFactory(self.path() / self.TAG_FILE_NAME)
 
     @classmethod
-    def read_from(cls, directory: Path, **options) -> "InfoI":
+    def read_from(cls, directory: os.PathLike, **options) -> "InfoI":
         """
-        the idea is that this method can produce some sort of validation,
+        This should be a robust constructor, that pipelines utilise.
+        The idea is that this constructor can produce some sort of validation,
         at the very minimum it should assert that the directory exists.
-        this method, potentially, can do io and stuff.
+        Potentially, it can do io and stuff.
+        Should short-circuit (return shallow copy, omit validation) if ``type(directory) == cls``
         """
         ...
 
@@ -87,6 +89,15 @@ class ImageInfoI(InfoI):
         ...
 
     def cropped_images(self) -> fs.FileTable:
+        ...
+
+    def image_dir(self) -> Path:
+        ...
+
+    def metadata_dir(self) -> Path:
+        ...
+
+    def cropped_image_dir(self) -> Path:
         ...
 
 
@@ -131,6 +142,7 @@ __protocol_special_keys = {
     "_is_protocol",
     "__subclasshook__",
     "__init__",
+    "__annotations__",
     "__abstractmethods__",
     "_abc_impl",
 }
@@ -172,6 +184,15 @@ def implements(
     if t is None:  # as decorator
         return clj
     clj(t)  # as function call
+
+
+def coerce_to(protocol: Type[T], x, alt_cons) -> T:
+    """
+    if ``type(x)`` is in the ``protocol`` implementation list,
+    ``return x``. else apply ``alt_cons`` to x
+    """
+    is_impl = type(x) in get_implementations(protocol)
+    return x if is_impl else alt_cons(x)
 
 
 # ================

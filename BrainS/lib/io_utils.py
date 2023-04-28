@@ -1,17 +1,17 @@
 """
 for consistent file io
 """
-import os
-from pathlib import Path
+from zipfile import ZipFile, ZipInfo
 from typing import NewType
-
 import toml as toml
 import yaml as yaml
 import numpy as np
 
-from . import filesystem as fs
+from ..prelude import *
 from .functional import Classifier
 from ._read_analyze75 import read_analyze75, is_analyze75
+from . import filesystem as fs
+
 
 __all__ = [
     "file",
@@ -38,7 +38,34 @@ __all__ = [
     "is_analyze75",
     "Analyze75File",
     # "Analyze75Dir",
+    "zip_files",
+    "zip_iterdir",
+    "unzip_files",
 ]
+
+# <editor-fold descr="zip utils">
+FS_ROOT = Path(Path().resolve().root)
+
+
+def zip_files(zip_path, files: Iterable, relative_to: Path = FS_ROOT):
+    with ZipFile(zip_path, 'w') as z:
+        for f in files:
+            z.write(f, Path(f).relative_to(relative_to))
+
+
+def zip_iterdir(zip_path) -> List[ZipInfo]:
+    with ZipFile(zip_path, 'r') as z:
+        return z.filelist
+
+
+def unzip_files(extract_to, zip_path, files: Opt[Iterable[Union[os.PathLike, ZipInfo]]] = None):
+    with ZipFile(zip_path, 'r') as z:
+        if files is None:
+            z.extractall(extract_to)
+            return
+        for f in files:
+            z.extract(f, extract_to)
+# </editor-fold>
 
 
 # <editor-fold descr="toml">

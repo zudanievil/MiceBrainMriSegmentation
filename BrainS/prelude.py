@@ -52,8 +52,13 @@ class Err(Exception):
 
 
 def is_err(x) -> bool:
-    """:return type(x) == Err"""
-    return type(x) == Err
+    """:return x.__class__ is Err"""
+    return x.__class__ is Err
+
+
+def isa(x, cls) -> bool:
+    """:return x.__class__ is cls"""
+    return x.__class__ is cls
 
 
 def raise_(error) -> None:
