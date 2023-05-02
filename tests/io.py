@@ -7,6 +7,7 @@ from BrainS.lib.filesystem import (
     File,
     FileTable,
     PrefixSuffixFormatter,
+    repr_DynamicDirInfo,
 )
 import BrainS.lib.io_utils as io
 import numpy as np
@@ -86,3 +87,30 @@ def test_file_tables(tmp_path_factory):
     assert dataset_reloaded == dataset
     # maybe add another setup?
     # rt = tmp_path_factory.mktemp("ftables2")
+
+
+@pytest.mark.visual
+def test_repr_DynamicDirInfo(tmp_path_factory):
+    class ReportDirInfo:
+        """just some class that I've made up on spot"""
+        def __init__(s, root: Path):
+            s.root = root
+            s.__root = "project dir root"
+            s.plots_trouble = root / "plots/tsh"
+            s.__plots_trouble = "plots for troubleshooting"
+            s.run_cfg = io.TomlFile(root / "run.toml")
+            s.__run_cfg = "configuration for the pipeline"
+            s.checkpoint_files = FileTable(
+                lambda x: root / (x + ".ckpt"),
+                _read=io.read_text,
+                _write=io.write_text,
+            )
+        __repr__ = repr_DynamicDirInfo
+
+    root = tmp_path_factory.mktemp("file_collections")
+
+    report_dir = ReportDirInfo(root)
+
+    report_dir.plots_trouble.mkdir(exist_ok=True, parents=True)
+    report_dir.run_cfg.path.touch()
+    print(report_dir)

@@ -314,3 +314,11 @@ def repr_flat(xs: Iterable[_FlatTree], elem_repr=repr) -> str:
                 pad = "  " * lvl
             lines.append(pad + elem_repr(x))
     return "\n".join(lines)
+
+
+def collect_by(xs: Iterable[T], key: Fn[[T], T1]) -> Dict[T1, List[T]]:
+    collector = dict()
+    for x in xs:
+        lst = collector.setdefault(key(x), list())
+        lst.append(x)
+    return collector

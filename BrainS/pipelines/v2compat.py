@@ -1,21 +1,23 @@
 import shutil as sh
 from argparse import Namespace as NS
 import xml.etree.ElementTree as et
-
+from typing import overload
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 
 from ..lib.functional import ValDispatch
 from ..prelude import *
 from .. import protocols as proto
 from ..lib import filesystem as fs, io_utils as io, config_utils, iterators
+from ._ontology import *
 
 __all__ = [
     "ImageDirInfo",
     "AtlasDirInfo",
     "SegmentationDirInfo",
     "PipelineErrors",
-    "_new_err",
+    "register_error",
     "explain_error",
     "ListErrorLog",
     "collect_image_metadata",
@@ -25,47 +27,47 @@ __all__ = [
 # <editor-fold desc="InfoI implementations">
 
 
-def _create_v2_compat_info(obj: proto.InfoI):
+def _create_v2_compat_info(obj: proto.InfoI, **mkdir_kw):
     """preferred way to create data directories"""
-    assert not obj.path().exists()
+    mkdir_kw = mkdir_kw or dict(exist_ok=True, parents=True)
+    assert not obj.path.exists()
+    obj.path.mkdir(**mkdir_kw)
     for k, v in obj.__class__.__dict__.items():
-        if k.endswith("dir") and hasattr(v, "__call__"):
-            v(obj).mkdir(parents=True, exist_ok=True)
+        if k.endswith("_dir") and hasattr(v, "__call__"):
+            v(obj).mkdir(**mkdir_kw)
     spec_src = obj.default_config()
     spec_dst = obj.config()
     sh.copy(spec_src, spec_dst)
     obj.tag_file().write(obj.tag())
+    if isa(obj, SegmentationDirInfo):
+        obj.hook_file(readonly=False).write((obj.image_info, obj.atlas_info))  # type: ignore
 
 
 @proto.implements(proto.InfoI)
 @proto.implements(proto.ImageInfoI)
-class ImageDirInfo:
-    __slots__ = ("_path",)
+class ImageDirInfo(NamedTuple):
+    path: Path
 
-    def __init__(self, path: Path):
-        self._path = path
+    @classmethod
+    def new(cls, path) -> "ImageDirInfo":
+        return cls(Path(path))
+
+    # InfoI impl
+    def __fspath__(self) -> str:
+        return str(self.path)
 
     TAG = "BrainS.v2compat.ImageDirInfo"
 
     # default implementations
-    TAG_FILE_NAME = proto.InfoI.TAG_FILE_NAME
-    __repr__ = repr_slots
     tag = proto.InfoI.tag
     tag_file = proto.InfoI.tag_file
-    create = _create_v2_compat_info
+    mkdir = _create_v2_compat_info
 
-    # InfoI impl
-    def path(self) -> Path:
-        return self._path
-
-    def __fspath__(self) -> str:
-        return str(self._path)
-
-    def config(self) -> fs.File:
-        return io.YamlFile(self._path / "image_folder_configuration.yml")
+    def config(self) -> fs.File[dict]:
+        return io.YamlFile(self.path / "image_folder_configuration.yml")
 
     @staticmethod
-    def default_config() -> fs.File:
+    def default_config() -> fs.File[dict]:
         return io.YamlFile(
             cfg.resource_dir / "v2/image_folder_configuration.yml"
         )
@@ -75,13 +77,12 @@ class ImageDirInfo:
         cls, directory: os.PathLike, *, fix_tag=True, check_naming=False
     ) -> "ImageDirInfo":
         """
-        :param directory: if directory is an ImageDirInfo, returns a shallow copy without any validation
+        :param directory: if directory is an ImageDirInfo, returns it without any validation
         :param fix_tag:
         :param check_naming:
-        :return:
         """
         if isa(directory, cls):
-            return cls(directory._path)  # type: ignore
+            return directory  # type: ignore
         directory = Path(directory)
         assert directory.exists()
         self = cls(directory)
@@ -95,19 +96,19 @@ class ImageDirInfo:
 
     # ImageInfoI & related
     def metadata_dir(self) -> Path:
-        return self._path / "meta"
+        return self.path / "meta"
 
     def pre_metadata_dir(self) -> Path:
-        return self._path / "pre_meta"
+        return self.path / "pre_meta"
 
     def raw_image_dir(self) -> Path:
-        return self._path / "img_raw"
+        return self.path / "img_raw"
 
     def image_dir(self) -> Path:
-        return self._path / "img"
+        return self.path / "img"
 
     def cropped_image_dir(self) -> Path:
-        return self._path / "img_cropped"
+        return self.path / "img_cropped"
 
     def raw_images(
         self, dtype="<i4", shape=(256, 256)
@@ -119,13 +120,13 @@ class ImageDirInfo:
             self.raw_image_dir(), suffix=""
         ).to_FileTable(read_raw)
 
-    def images(self) -> fs.FileTable[str, io.np.ndarray]:
+    def images(self) -> fs.FileTable[str, np.ndarray]:
         return io.NpyDir(self.image_dir())
 
     def metadata(self) -> fs.FileTable[str, io.Yaml]:
         return io.YamlDir(self.metadata_dir())
 
-    def cropped_images(self) -> fs.FileTable[str, io.np.ndarray]:
+    def cropped_images(self) -> fs.FileTable[str, np.ndarray]:
         return io.NpyDir(self.cropped_image_dir())
 
     __DS_METHS = (
@@ -140,7 +141,7 @@ class ImageDirInfo:
         """
         :return: check non-empty directories for naming consistency.
         if inconsistent, then
-        :raise `` Err((PipelineErrors.KEYS_NOT_EXIST, non_existent_keys))``
+        :raise ``Err((PipelineErrors.KEYS_NOT_EXIST, non_existent_keys))``
         """
         proto_tables = [
             (di(self).name, ft)
@@ -165,16 +166,151 @@ class ImageDirInfo:
             raise Err((PipelineErrors.KEYS_NOT_EXIST, non_existent))
 
 
-# @proto.implements(proto.InfoI)
-# @proto.implements(proto.AtlasInfoI)
-class AtlasDirInfo:
-    ...
+@proto.implements(proto.InfoI)
+@proto.implements(proto.AtlasInfoI)
+class AtlasDirInfo(NamedTuple):
+    path: Path
 
+    # InfoI impl
+    def __fspath__(self) -> str:
+        return str(self.path)
 
-# @proto.implements(proto.InfoI)
-# @proto.implements(proto.SegmentationInfoI)
-class SegmentationDirInfo:
-    ...
+    TAG = "BrainS.v2compat.AtlasDirInfo"
+    # default implementations
+    tag = proto.InfoI.tag
+    tag_file = proto.InfoI.tag_file
+    mkdir = _create_v2_compat_info
+
+    def config(self) -> fs.File[dict]:
+        return io.YamlFile(self.path / "ontology_folder_configuration.yml")
+
+    @staticmethod
+    def default_config() -> fs.File[dict]:
+        return io.YamlFile(
+            cfg.resource_dir / "v2/ontology_folder_configuration.yml"
+        )
+
+    @classmethod
+    def read_from(
+            cls, directory: os.PathLike, *, fix_tag=True,
+    ) -> "AtlasDirInfo":
+        """
+        :param directory: if directory is an AtlasDirInfo, returns it without any validation
+        :param fix_tag:
+        """
+        if isa(directory, cls):
+            return directory  # type: ignore
+        directory = Path(directory)
+        assert directory.exists()
+        self = cls(directory)
+        assert Path(self.config().path).exists()
+        tag_f = self.tag_file()
+        if not Path(tag_f.path).exists() and fix_tag:
+            tag_f.write(self.tag())
+        return self
+
+    # AtlasInfoI impl
+
+    def svg_dir(self) -> Path:
+        return self.path / "svgs"
+
+    def svgs(self) -> fs.FileTable:
+        ...
+
+    def ontology_dir(self) -> Path:
+        return self.path / "onts"
+
+    def ontologies(self) -> fs.FileTable[str, Ontology]:
+        return fs.PrefixSuffixFormatter(self.ontology_dir(), ".xml")\
+            .to_FileTable(read_ont, write_ont)
+
+    def mask_dir(self) -> Path:
+        return self.path
+
+    def masks(self) -> fs.FileTable[str, fs.FileTable[Structure, np.ndarray[bool]]]:
+        names = [p.stem for p in self.svg_dir().iterdir() if p.suffix == ".svg"]
+        return fs.TableFormatter({n: self.mask_dir() / n for n in names}).to_FileTable(MaskDir)
+
+_img_atlas_t = Tuple[proto.ImageInfoI, proto.AtlasInfoI]
+
+@proto.implements(proto.InfoI)
+@proto.implements(proto.SegmentationInfoI)
+class SegmentationDirInfo(NamedTuple):
+    path: Path
+    image_info: proto.ImageInfoI
+    atlas_info: proto.AtlasInfoI
+
+    def __fspath__(self) -> str:
+        return str(self.path)
+
+    # InfoI impl
+    TAG = "BrainS.v2compat.SegmentationDirInfo"
+
+    # default implementations
+    tag = proto.InfoI.tag
+    tag_file = proto.InfoI.tag_file
+    mkdir = _create_v2_compat_info
+
+    def config(self) -> fs.File[dict]:
+        return io.YamlFile(self.path / "results_folder_configuration.yml")
+
+    @staticmethod
+    def default_config() -> fs.File[dict]:
+        return io.YamlFile(
+            cfg.resource_dir / "v2/results_folder_configuration.yml"
+        )
+
+    @classmethod
+    def read_from(
+            cls, directory: os.PathLike, *, fix_tag=True,
+    ) -> "SegmentationDirInfo":
+        """
+        :param directory: if directory is an AtlasDirInfo, returns it without any validation
+        :param fix_tag:
+        """
+        if isa(directory, cls):
+            return directory  # type: ignore
+        directory = Path(directory)
+        assert directory.exists()
+        self = cls(directory, None, None)  # type: ignore
+        image_info, atlas_info = self.hook_file().read()
+        assert image_info.path.exists()
+        assert atlas_info.path.exists()
+        self = cls(directory, image_info, atlas_info)
+        assert Path(self.config().path).exists()
+        tag_f = self.tag_file()
+        if not Path(tag_f.path).exists() and fix_tag:
+            tag_f.write(self.tag())
+        return self
+
+    @classmethod
+    def new(cls, image_dir, atlas_dir, path=None, name=None) -> "SegmentationDirInfo":
+        image_dir = proto.coerce_to(proto.ImageInfoI, image_dir, lambda x: ImageDirInfo(Path(x)))
+        atlas_dir = proto.coerce_to(proto.AtlasInfoI, atlas_dir, lambda x: AtlasDirInfo(Path(x)))
+        if path is None:
+            name = name or image_dir.path.name + " at " + atlas_dir.path.name
+            prefix = fs.common_prefix(image_dir.path, atlas_dir.path) or Path()
+            path = prefix / "segm" / name
+        return cls(path, image_dir, atlas_dir)
+
+    def hook_file(self, readonly=True) -> fs.File[_img_atlas_t]:
+        return fs.File(self.config().path, self._read_hook, not_implemented if readonly else self._write_hook)
+
+    def _read_hook(self, path) -> _img_atlas_t:
+        config = io.read_yaml(path)["general"]
+        paths = config["image_folder"], config["ontology_folder"]
+        paths = [self.path / Path(p).expanduser().resolve() for p in paths]
+        return ImageDirInfo(paths[0]), AtlasDirInfo(paths[1])  # type: ignore
+
+    def _write_hook(self, path, value: _img_atlas_t) -> None:
+        image_info, atlas_info = [
+            os.fspath(fs.super_relative(self.path, Path(p)) or p) for p in value
+        ]
+        config = io.read_text(path)
+        # this is kind of stupid that i made absolute paths the default
+        config = config.replace("replace with image folder absolute path", image_info, 1)
+        config = config.replace("replace with ontology folder absolute path", atlas_info, 1)
+        io.write_text(path, config)
 
 
 # </editor-fold>
@@ -196,7 +332,7 @@ you do not need to change this module's code, to change the behaviour.
 PipelineErrors = _E = NS()
 
 
-def _new_err(name: str):
+def register_error(name: str):
     """
     register a new PipelineError.
     this allows to distribute the error definitions,
@@ -251,7 +387,7 @@ def compress_image_dir(image_dir, zip_file: os.PathLike = None, use_raw=False):
         (imd.config().path, imd.tag_file().path),
         *(d.iterdir() for d in dirs)
     )
-    src = imd.path()
+    src = imd.path
     zip_file = zip_file or (str(src) + ".backup.zip")
     io.zip_files(zip_file, files, src)
 
@@ -260,8 +396,8 @@ def compress_image_dir(image_dir, zip_file: os.PathLike = None, use_raw=False):
 
 # <editor-fold description="collect metadata">
 
-_new_err("PRE_METADATA_NOT_FOUND")
-_new_err("PRE_METADATA_READ_ERROR")
+register_error("PRE_METADATA_NOT_FOUND")
+register_error("PRE_METADATA_READ_ERROR")
 
 
 _pre_meta_reader_t = Fn[[Path, str], Union[dict, Err]]
@@ -357,7 +493,7 @@ class collect_image_metadata(NamedTuple):
 
 
 # <editor-fold descr="raw images to npy">
-_new_err("RAW_IMAGES_TO_NUMPY")
+register_error("RAW_IMAGES_TO_NUMPY")
 
 
 @explain_error.register(_E.RAW_IMAGES_TO_NUMPY)
@@ -447,17 +583,130 @@ def prerender_masks(atlas_dir: os.PathLike):
 # </editor-fold>
 
 
-# <editor-fold description="">
+# <editor-fold description="plot the masks">
+def __get_frame_from_image_name(image_name: str) -> str:  # TODO: what to do with such things?
+    return image_name.rsplit("_", maxsplit=1)[1]
+
+
+class MaskPlotsDir:
+    """represents directory with mask plots. if ``use_subroot``, do not use root directly"""
+    def __init__(self, root, use_subroot=False):
+        root = Path(root)
+        self.root_dir = root / "masks_plots" if use_subroot else root
+        self.formatter = fs.PrefixSuffixFormatter(self.root_dir, ".png")
+        self.__formatter = "format plot names with this"
+    __repr__ = fs.repr_DynamicDirInfo
+
+
+@overload
+def plot_the_masks(segmentation_dir, *, image_names: List[str] = None, structure_names: List[str] = None): ...
+
+
+@overload
+def plot_the_masks(image_dir, atlas_dir, *, image_names: List[str] = None, structure_names: List[str] = None): ...
+
+
+def plot_the_masks(image_dir, atlas_dir=None, out_path=None, *, image_names: List[str] = None, structure_names: List[str] = None):
+    if atlas_dir is None:  # call signature 1
+        segm_dir = proto.coerce_to(proto.SegmentationInfoI, image_dir, SegmentationDirInfo.read_from)
+        image_dir = segm_dir.image_info
+        atlas_dir = segm_dir.atlas_info
+        plots_dir = MaskPlotsDir(segm_dir, use_subroot=True)
+    else:  # call signature 2
+        image_dir = proto.coerce_to(proto.ImageInfoI, image_dir, ImageDirInfo.read_from)
+        atlas_dir = proto.coerce_to(proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from)
+        plots_dir = MaskPlotsDir(out_path)
+    plots_dir.root_dir.mkdir(parents=True, exist_ok=True)
+    masks_dir_table = atlas_dir.masks()
+    ont_table = atlas_dir.ontologies()
+    cropped_images = image_dir.cropped_images()
+    frames = dict()  # caches
+    onts = dict()
+    for im_name, s_name in iterators.product(image_names, structure_names):
+        # TODO: remake into namedtuple or like, factor out main_loop closure, make error handling (if needed)
+        frame = __get_frame_from_image_name(im_name)  # this should probably become main_loop closure parameter
+        ont: Ontology = onts.get(frame)
+        if ont is None:
+            ont: Ontology = onts.setdefault(frame, ont_table[frame])
+        structure = ont.find(lambda s: s.acronym == s_name or s.name == s_name)  # predicate should be configurable
+
+        masks_dir = frames.setdefault(frame, masks_dir_table[frame])
+        mask = masks_dir[structure]
+        image = cropped_images[im_name]
+        save_path = plots_dir.formatter.format(f"{im_name} with {s_name}")
+
+        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        ax.imshow(image, cmap="gray")
+        mask = mask | np.flip(mask, axis=1)
+        ax.imshow(np.where(mask, mask, np.nan), cmap="Set1", alpha=0.2)
+        # plot function should be a separate closure
+        fig.savefig(save_path, dpi=96)
+        plt.close(fig)
 
 
 # </editor-fold>
 
 
+# <editor-fold description="data to series">
+
+class SerialImagesDir:
+    def __init__(self, img_dir):
+        img_dir = proto.coerce_to(proto.ImageInfoI, img_dir, ImageDirInfo.read_from)
+        self.path = img_dir.path / "serial_images"
+        self.index_file = fs.File(self.path / "index.csv", self._shape_file_read, self._shape_file_write)
+        self.table = io.NpyDir(self.path)
+    __repr__ = fs.repr_DynamicDirInfo
+
+    @staticmethod
+    def _shape_file_write(path, value):
+        pd.DataFrame.to_csv(value, path, sep="\t", index=not isa(value.index, pd.RangeIndex))
+
+    @staticmethod
+    def _shape_file_read(path):
+        t = pd.read_csv(path, sep="\t")
+        cols = list(t.columns)
+        cols.remove("im_width")
+        cols.remove("im_height")
+        return t.set_index(cols)
+
+
+class NameTuple(NamedTuple):
+    hour: int
+    animal: int
+    frame: int
+
+    @classmethod
+    def parse(cls, s: str):
+        _, hour, animal, frame = s.split("_")
+        return cls(int(hour), int(animal), int(frame[1:]))
+
+
+def image_dir_to_series(image_dir):
+    image_dir = proto.coerce_to(proto.ImageInfoI, image_dir, ImageDirInfo.read_from)
+    image_dir_ser = SerialImagesDir(image_dir)
+    image_dir_ser.path.mkdir(exist_ok=True)
+    ci_in = image_dir.cropped_images()
+    ci_out = image_dir_ser.table
+    keys = [(NameTuple.parse(k), k) for k in image_dir.cropped_images().keys()]
+    keygroups = iterators.collect_by(keys, lambda n: (n[0].animal, n[0].frame))
+    keygroups = {k: sorted(v, key=lambda n: n[0].hour) for k, v in keygroups.items()}
+    shapes = []
+    get_shape = lambda g, sh: dict(animal=g[0], frame=g[1], im_width=sh[0], im_height=sh[1])
+    for group, keys in keygroups.items():
+        images = np.stack([ci_in[name] for _, name in keys], axis=0)
+        shapes.append(get_shape(group, images.shape[1:]))
+        images = images.reshape((len(images), -1)).T
+        ci_out["_".join(str(g) for g in group)] = images
+    shapes = pd.DataFrame(shapes)
+    image_dir_ser.index_file.write(shapes)
+
+# </editor-fold>
+
 # <editor-fold description="">
 # </editor-fold>
-# <editor-fold description="">
-# </editor-fold>
+
 # <editor-fold description="average cropped images">
 # </editor-fold>
 
 # </editor-fold>
+

@@ -214,7 +214,8 @@ def common_prefix(p0: Path, p1: Path) -> Opt[Path]:  # TODO: test
     i = common_parts(p0, p1)
     if i is None:
         return None
-    return p0.parents[i]
+    parents = p0.parents
+    return parents[len(parents) - i]
 
 
 def __dir_has_children(x):
@@ -242,3 +243,115 @@ iter_tree_braces = Flattener(
     get_children=__dir_head_tail_iter,
     leaf_unwrap=__dir_unwrap,
 )
+
+
+class FilterFormatter(NamedTuple):
+    """
+    if a datataset has complex file hierarchy,
+    it may make sense to simply filter files by predicate
+    """
+
+    prefix: Path
+    filter: Fn[[Path], bool]
+
+    def format(self, path: str) -> Path:
+        return self.prefix / path
+
+    def unformat(self, path: PathLike) -> str:
+        path = path if isinstance(path, Path) else Path(path)
+        return str(path.relative_to(self.prefix))  # type: ignore
+
+    def keys(self) -> Iterator[str]:
+        return (str(p.relative_to(self.prefix)) for p in iter_tree(self.prefix) if self.filter(p))
+
+    def to_FileTable(
+            self, read: _read_t = not_implemented, write: _write_t = not_implemented
+    ) -> FileTable[str, T]:
+        return FileTable(self.format, self.unformat, self.keys, read, write)
+
+
+class TableFormatter(NamedTuple):
+    """
+    just have a lookup table for paths
+    """
+    table: Dict[K, Path]
+
+    def format(self, key: K) -> Path:
+        return self.table[key]
+
+    def unformat(self, path):
+        path = Path(path)
+        for k, v in self.table.items():
+            if v == path:
+                return k
+        else:
+            raise ValueError(path)
+
+    def keys(self) -> Iterable[K]:
+        return self.table.keys()
+
+    __repr__ = object.__repr__  # because it will be a freaking huge output
+
+    def to_FileTable(
+            self, read: _read_t = not_implemented, write: _write_t = not_implemented
+    ) -> FileTable[str, T]:
+        return FileTable(self.format, self.unformat, self.keys, read, write)
+
+
+def repr_DynamicDirInfo(self):
+    """
+    represent an object that conforms to a special standard:
+    ```
+    class ExampleProjectDir:
+        "info for my project directory"
+        def __init__(self, root: Path):
+            self.plots_dir = root / "plots"
+            # .__x will be a docstring for .x
+            self.__plots_dir = "a directory for plots"
+            self.cfg = TomlFile(root / "run-cfg.toml")
+            self.__cfg = "configuration for a pipeline"
+
+        __repr__ = repr_DynamicDirInfo
+    ```
+    Displays additional info for PathLike fields.
+    Class must have ``__init__`` method and
+    instances must use ``__dict__``
+    """
+    cls = self.__class__
+    cls_name = cls.__name__
+    parts = [f"\n[About {cls.__name__}]", ]
+    if cls.__doc__:
+        parts.append(f"[Doc]: {cls.__doc__}")
+    parts.append(f"[Init]: {ipyformat(cls.__init__)}")
+    parts.append("[Attributes]:")
+
+    parts = ["\n".join(parts), ]
+    obj_dict = self.__dict__
+    for k, v in obj_dict.items():
+        if k.startswith("_"):
+            continue
+        try:
+            p = Path(v)
+            if not p.exists():
+                status = "(not exist)"
+            elif p.is_dir():
+                status = "(dir)"
+            else:
+                status = ""
+            path = f"[path]: {p} {status}"
+        except TypeError:  # not an os.PathLike
+            path = None
+        attrib = f".{k}:"
+        repr_ = None if isinstance(v, Path) else f"[repr]: {repr(v)}"
+        doc = obj_dict.get(f"_{cls_name}__{k}")
+        doc = None if doc is None else f"[doc]: {doc}"
+        parts.append("\n".join(s for s in (attrib, path, doc, repr_) if s))
+    parts.append(f"end of {cls.__name__};\n")
+    return "\n_____________\n".join(parts)
+
+
+"""
+This ^^^ may seem as a useless function, however, I find myself making
+classes like this quite often. It's nice to have some good support for 
+them at runtime, while keeping their code declarative.
+"""

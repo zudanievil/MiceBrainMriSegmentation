@@ -36,10 +36,13 @@ def __(path, value: InfoDirTag) -> None:
     io.write_toml(path, d)
 
 
+INFO_I_TAG_FILE_NAME = ".BrainS_directory_info.toml"
+
+
 class InfoI(Proto):
-    TAG: str = ""
+    TAG: str = ...
     """unique string identifier of a class. should be persistent over versions"""
-    TAG_FILE_NAME = ".BrainS_directory_info.toml"
+    # TAG_FILE_NAME = ".BrainS_directory_info.toml"
 
     def tag(self) -> InfoDirTag:
         """create a tag object for writing"""
@@ -49,7 +52,7 @@ class InfoI(Proto):
 
     def tag_file(self) -> fs.File[InfoDirTag]:
         """create fs.File to mark directory"""
-        return TagFileFactory(self.path() / self.TAG_FILE_NAME)
+        return TagFileFactory(self.path / INFO_I_TAG_FILE_NAME)
 
     @classmethod
     def read_from(cls, directory: os.PathLike, **options) -> "InfoI":
@@ -62,8 +65,8 @@ class InfoI(Proto):
         """
         ...
 
-    def path(self) -> Path:
-        ...
+    path: Path = ...
+    """typically, this should be a public field"""
 
     def __fspath__(self) -> str:
         ...
@@ -77,7 +80,7 @@ class InfoI(Proto):
     def __repr__(self) -> str:
         ...
 
-    def create(self) -> None:
+    def mkdir(self) -> None:
         ...
 
 
@@ -102,30 +105,32 @@ class ImageInfoI(InfoI):
 
 
 class AtlasInfoI(InfoI):
-    def svgs(self) -> fs.FileTable:
+    def svgs(self) -> fs.FileTable[str, V]:
         ...
 
-    def ontologies(self) -> fs.FileTable:
+    def ontologies(self) -> fs.FileTable[str, V]:
         ...
 
-    def masks(self) -> fs.FileTable:
+    def masks(self) -> fs.FileTable[str, fs.FileTable[K, "np.ndarray[bool]"]]:
         ...
 
 
 class SegmentationInfoI(InfoI):
-    def atlas_info(self) -> AtlasInfoI:
+    atlas_info: AtlasInfoI = ...
+    image_info: ImageInfoI = ...
+
+    def hook_file(self) -> fs.File[Tuple[ImageInfoI, AtlasInfoI]]:
         ...
 
-    def image_info(self) -> ImageInfoI:
-        ...
-
-    def temp_dir(self) -> Path:
-        ...
-
-    def plots_dir(self) -> Path:
-        ...
-
-    def tables_dir(self) -> Path:
+    @classmethod
+    def new(cls, image_dir: os.PathLike, atlas_dir: os.PathLike, path: os.PathLike = None, name: str =None) -> "SegmentationDirInfo":
+        """
+        constructor with no filesystem-based validation.
+        should coerce types of arguments
+        path or name are optional arguments that
+        help to decide on segmentation dir path. however,
+        it should be possible to deduce a good path without them
+        """
         ...
 
 
@@ -176,7 +181,7 @@ def implements(
             if k not in t.__dict__ and k not in __protocol_special_keys:
                 missing.append(k)
         if missing:
-            raise KeyError(f"missing methods: {missing}")
+            raise KeyError(f"missing attributes: {missing}")
 
         impls.add(t)
         return t

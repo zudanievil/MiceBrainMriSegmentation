@@ -466,8 +466,9 @@ class SegmentationResultFolderInfo:
         """
         dummy_instance = cls("", "", folder)
         spec = dummy_instance.configuration()["general"]
-        im_f, ont_f = Path(spec["image_folder"]), Path(spec["ontology_folder"])
-
+        im_f, ont_f = spec["image_folder"], spec["ontology_folder"]
+        # account for the possibility of relative paths (v3)
+        im_f, ont_f = [(dummy_instance.folder() / p).expanduser().resolve() for p in (im_f, ont_f)]
         if not (im_f.exists() and ont_f.exists()):
             raise FileNotFoundError(f"{im_f} and {ont_f} do not exist!")
         if not im_f.exists():

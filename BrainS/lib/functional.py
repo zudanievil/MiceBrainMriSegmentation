@@ -209,3 +209,26 @@ class Classifier:
 
 # it is impressive, how easy it is to build such adaptable dispatches from scraps.
 # contrary to the oop dispatch, which is neither versatile, nor easy to build.
+
+
+# class ContextManager(Generic[T]):
+#     __slots__ = ("enter", "exit", "use_exc")
+#
+#     def __init__(self, enter: Fn[[], T], exit: Fn[..., None] = None, use_exc=False):
+#         self.enter = enter
+#         self.exit = exit
+#         self.use_exc = use_exc
+#
+#     __repr__ = repr_slots
+#
+#     def add_enter(self, enter: Fn[[], T]):
+#         self.enter = enter
+#
+#     def add_exit(self, exit: Fn[..., None]):
+#         self.exit = exit
+#
+#     def __enter__(self) -> T:
+#         return self.enter()
+#
+#     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+#         self.exit(exc_type, exc_val, exc_tb) if self.use_exc else self.exit()
