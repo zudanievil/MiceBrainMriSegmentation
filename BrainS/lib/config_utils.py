@@ -51,11 +51,10 @@ def construct_from_disp(from_to: Tuple[Type[T], Type[T1]], config: T) -> T1:
 
 
 def construct_from(t1: Type[T1], x: T) -> T1:
-    """apply ``construct_from_disp`` """
+    """apply ``construct_from_disp``"""
     return construct_from_disp((type(x), t1), x)
 
 
 def get_constructor(src_t: Type[T], dst_t: Type[T1]) -> Opt[Fn[[T], T1]]:
     """search ``construct_from_disp`` registry"""
     return construct_from_disp.registry.get((src_t, dst_t))
-

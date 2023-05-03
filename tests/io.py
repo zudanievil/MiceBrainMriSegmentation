@@ -93,6 +93,7 @@ def test_file_tables(tmp_path_factory):
 def test_repr_DynamicDirInfo(tmp_path_factory):
     class ReportDirInfo:
         """just some class that I've made up on spot"""
+
         def __init__(s, root: Path):
             s.root = root
             s.__root = "project dir root"
@@ -105,6 +106,7 @@ def test_repr_DynamicDirInfo(tmp_path_factory):
                 _read=io.read_text,
                 _write=io.write_text,
             )
+
         __repr__ = repr_DynamicDirInfo
 
     root = tmp_path_factory.mktemp("file_collections")

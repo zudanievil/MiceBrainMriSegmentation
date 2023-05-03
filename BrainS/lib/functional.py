@@ -1,7 +1,7 @@
 from functools import (
     partial,
     reduce,
-    # lru_cache,
+    lru_cache,
 )
 from ..prelude import *
 
@@ -11,6 +11,7 @@ __all__ = [
     "Classifier",
     "partial",
     "reduce",
+    "lru_cache"
 ]
 
 

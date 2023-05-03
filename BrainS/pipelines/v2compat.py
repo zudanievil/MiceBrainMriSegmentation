@@ -6,24 +6,31 @@ import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from ..lib.functional import ValDispatch
+from ..lib.functional import lru_cache
 from ..prelude import *
 from .. import protocols as proto
 from ..lib import filesystem as fs, io_utils as io, config_utils, iterators
 from ._ontology import *
+from ._share import *
 
 __all__ = [
     "ImageDirInfo",
     "AtlasDirInfo",
     "SegmentationDirInfo",
     "PipelineErrors",
-    "register_error",
+    "DefaultHandlers",
     "explain_error",
+    "register_error",
     "ListErrorLog",
     "collect_image_metadata",
     "atlas_download",
     "compress_image_dir",
 ]
+
+_E = PipelineErrors
+# _H = DefaultHandlers
+_soft_err_t = DefaultHandlers.soft_error_type
+
 # <editor-fold desc="InfoI implementations">
 
 
@@ -192,7 +199,10 @@ class AtlasDirInfo(NamedTuple):
 
     @classmethod
     def read_from(
-            cls, directory: os.PathLike, *, fix_tag=True,
+        cls,
+        directory: os.PathLike,
+        *,
+        fix_tag=True,
     ) -> "AtlasDirInfo":
         """
         :param directory: if directory is an AtlasDirInfo, returns it without any validation
@@ -221,17 +231,24 @@ class AtlasDirInfo(NamedTuple):
         return self.path / "onts"
 
     def ontologies(self) -> fs.FileTable[str, Ontology]:
-        return fs.PrefixSuffixFormatter(self.ontology_dir(), ".xml")\
-            .to_FileTable(read_ont, write_ont)
+        return fs.PrefixSuffixFormatter(
+            self.ontology_dir(), ".xml"
+        ).to_FileTable(read_ont, write_ont)
 
     def mask_dir(self) -> Path:
         return self.path
 
-    def masks(self) -> fs.FileTable[str, fs.FileTable[Structure, np.ndarray[bool]]]:
+    def masks(
+        self,
+    ) -> fs.FileTable[str, fs.FileTable[Structure, np.ndarray[bool]]]:
         names = [p.stem for p in self.svg_dir().iterdir() if p.suffix == ".svg"]
-        return fs.TableFormatter({n: self.mask_dir() / n for n in names}).to_FileTable(MaskDir)
+        return fs.TableFormatter(
+            {n: self.mask_dir() / n for n in names}
+        ).to_FileTable(MaskDir)
+
 
 _img_atlas_t = Tuple[proto.ImageInfoI, proto.AtlasInfoI]
+
 
 @proto.implements(proto.InfoI)
 @proto.implements(proto.SegmentationInfoI)
@@ -262,7 +279,10 @@ class SegmentationDirInfo(NamedTuple):
 
     @classmethod
     def read_from(
-            cls, directory: os.PathLike, *, fix_tag=True,
+        cls,
+        directory: os.PathLike,
+        *,
+        fix_tag=True,
     ) -> "SegmentationDirInfo":
         """
         :param directory: if directory is an AtlasDirInfo, returns it without any validation
@@ -284,9 +304,15 @@ class SegmentationDirInfo(NamedTuple):
         return self
 
     @classmethod
-    def new(cls, image_dir, atlas_dir, path=None, name=None) -> "SegmentationDirInfo":
-        image_dir = proto.coerce_to(proto.ImageInfoI, image_dir, lambda x: ImageDirInfo(Path(x)))
-        atlas_dir = proto.coerce_to(proto.AtlasInfoI, atlas_dir, lambda x: AtlasDirInfo(Path(x)))
+    def new(
+        cls, image_dir, atlas_dir, path=None, name=None
+    ) -> "SegmentationDirInfo":
+        image_dir = proto.coerce_to(
+            proto.ImageInfoI, image_dir, lambda x: ImageDirInfo(Path(x))
+        )
+        atlas_dir = proto.coerce_to(
+            proto.AtlasInfoI, atlas_dir, lambda x: AtlasDirInfo(Path(x))
+        )
         if path is None:
             name = name or image_dir.path.name + " at " + atlas_dir.path.name
             prefix = fs.common_prefix(image_dir.path, atlas_dir.path) or Path()
@@ -294,7 +320,11 @@ class SegmentationDirInfo(NamedTuple):
         return cls(path, image_dir, atlas_dir)
 
     def hook_file(self, readonly=True) -> fs.File[_img_atlas_t]:
-        return fs.File(self.config().path, self._read_hook, not_implemented if readonly else self._write_hook)
+        return fs.File(
+            self.config().path,
+            self._read_hook,
+            not_implemented if readonly else self._write_hook,
+        )
 
     def _read_hook(self, path) -> _img_atlas_t:
         config = io.read_yaml(path)["general"]
@@ -308,8 +338,12 @@ class SegmentationDirInfo(NamedTuple):
         ]
         config = io.read_text(path)
         # this is kind of stupid that i made absolute paths the default
-        config = config.replace("replace with image folder absolute path", image_info, 1)
-        config = config.replace("replace with ontology folder absolute path", atlas_info, 1)
+        config = config.replace(
+            "replace with image folder absolute path", image_info, 1
+        )
+        config = config.replace(
+            "replace with ontology folder absolute path", atlas_info, 1
+        )
         io.write_text(path, config)
 
 
@@ -317,55 +351,6 @@ class SegmentationDirInfo(NamedTuple):
 
 
 # <editor-fold description="pipeline implementations">
-
-# <editor-fold descr="prerequisites">
-
-"""
-this section may seem overly dynamic. usually, type fluency is a bad thing.
-however, data-processing pipelines are very susceptible to changes and corrections,
-so argument broadcasting, non-specific type definitions,
-mutable dispatches and enums (argparse.Namespace) can be a good fit here.
-they make things easier to hack from outside:
-you do not need to change this module's code, to change the behaviour.
-"""
-
-PipelineErrors = _E = NS()
-
-
-def register_error(name: str):
-    """
-    register a new PipelineError.
-    this allows to distribute the error definitions,
-    yet collect all errors in a single object
-    """
-    setattr(PipelineErrors, name, name)
-
-
-@ValDispatch.new(None)
-def explain_error(*_) -> str:
-    """explain one of the pipeline errors arguments"""
-    raise NotImplementedError
-
-
-class ListErrorLog:
-    __slots__ = "lst", "stream"
-
-    def __init__(self, stream: Opt[Any] = sys.stderr):
-        self.lst = []
-        self.stream = stream
-
-    def __call__(self, e: Opt[Err]):
-        if not is_err(e):
-            return
-        self.lst.append(e)
-        if self.stream is not None:
-            self.stream.write(explain_error(*e.data))
-
-
-_log_t = Fn[[Opt[Err]], None]
-
-
-# </editor-fold>
 
 
 # <editor-fold descr="zip ImageDir">
@@ -384,12 +369,12 @@ def compress_image_dir(image_dir, zip_file: os.PathLike = None, use_raw=False):
 
     assert all(d.exists() for d in dirs), f"some of {dirs} do not exist"
     files = iterators.chain(
-        (imd.config().path, imd.tag_file().path),
-        *(d.iterdir() for d in dirs)
+        (imd.config().path, imd.tag_file().path), *(d.iterdir() for d in dirs)
     )
     src = imd.path
     zip_file = zip_file or (str(src) + ".backup.zip")
     io.zip_files(zip_file, files, src)
+
 
 # </editor-fold>
 
@@ -453,11 +438,13 @@ def explain_error(_, k, meta_key, exc_type, exc_args, lineno):
     )
 
 
-class collect_image_metadata(NamedTuple):
+class collect_image_metadata(NamedTuple):  # this is a good example of how final pipelines should look like
     pre_meta_reader: _pre_meta_reader_t
 
     @staticmethod
-    def from_ImageDirInfo(_, config: Union[ImageDirInfo, fs.File[dict], dict]) -> "collect_image_metadata":
+    def from_ImageDirInfo(
+        _, config: Union[ImageDirInfo, fs.File[dict], dict]
+    ) -> "collect_image_metadata":
         if isa(config, ImageDirInfo):
             d = config.config().read()
         elif isa(config, fs.File):
@@ -487,12 +474,13 @@ class collect_image_metadata(NamedTuple):
         return main_loop, keys
 
     @classmethod
-    def main(cls, image_dir: os.PathLike, log: _log_t = None) -> _log_t:
+    def main(cls, image_dir: os.PathLike, soft_err: _soft_err_t = None):
         loop, keys = cls.get_main_loop(image_dir)
-        log = ListErrorLog() if log is None else log
+        soft_err = DefaultHandlers.soft_error if soft_err is None else soft_err
         for k in keys:
-            log(loop(k))
-        return log
+            e = loop(k)
+            if is_err(e):
+                soft_err(e)
 
 
 config_utils.construct_from_disp.register(
@@ -511,17 +499,21 @@ def explain_error(_, k, exc_type, exc_args) -> str:
     return f"pipeline: {raw_images_to_npy.__name__}, step: {k}, cause: exception {exc_type}{exc_args}"
 
 
-def raw_images_to_npy(image_dir: os.PathLike, dtype="<i4", shape=(256, 256), log: _log_t = None) -> _log_t:
+def raw_images_to_npy(
+    image_dir: os.PathLike, dtype="<i4", shape=(256, 256), soft_err: _soft_err_t = None
+):
     image_dir = ImageDirInfo.read_from(image_dir)
     raw = image_dir.raw_images(dtype, shape)
     imgs = image_dir.images()
-    log = ListErrorLog() if log is None else log
+    soft_err = DefaultHandlers.soft_error if soft_err is None else soft_err
     for k in raw.keys():
         try:
             imgs[k] = raw[k]
         except Exception as e:
-            log(Err((_E.RAW_IMAGES_TO_NUMPY, k, type(e), e.args)))
-    return log
+            soft_err(Err((_E.RAW_IMAGES_TO_NUMPY, k, type(e), e.args)))
+
+
+
 # </editor-fold>
 
 
@@ -548,7 +540,10 @@ class atlas_download:
     @staticmethod
     def slice_ids_table(atlas_dir: os.PathLike) -> Tuple[Path, pd.DataFrame]:
         from urllib.request import urlretrieve as download
-        atlas_dir = proto.coerce_to(proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from)
+
+        atlas_dir = proto.coerce_to(
+            proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from
+        )
         save_path = atlas_dir.path / "slice_ids.txt"
         config = atlas_dir.config().read()
         # perhaps, move to _from_dict_interface_. or maybe not
@@ -569,14 +564,16 @@ class atlas_download:
 
     @staticmethod
     def default_ontology(atlas_dir: os.PathLike):
-        from urllib.request import urlretrieve as download
-        atlas_dir = proto.coerce_to(proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from)
+        atlas_dir = proto.coerce_to(
+            proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from
+        )
         ...
 
     @staticmethod
     def svgs(atlas_dir: os.PathLike):
-        from urllib.request import urlretrieve as download
-        atlas_dir = proto.coerce_to(proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from)
+        atlas_dir = proto.coerce_to(
+            proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from
+        )
         ...
 
 
@@ -594,38 +591,70 @@ def prerender_masks(atlas_dir: os.PathLike):
 
 
 # <editor-fold description="plot the masks">
-def __get_frame_from_image_name(image_name: str) -> str:  # TODO: what to do with such things?
+def __get_frame_from_image_name(
+    image_name: str,
+) -> str:  # TODO: what to do with such things?
     return image_name.rsplit("_", maxsplit=1)[1]
 
 
 class MaskPlotsDir:
     """represents directory with mask plots. if ``use_subroot``, do not use root directly"""
+
     def __init__(self, root, use_subroot=False):
         root = Path(root)
         self.root_dir = root / "masks_plots" if use_subroot else root
         self.formatter = fs.PrefixSuffixFormatter(self.root_dir, ".png")
         self.__formatter = "format plot names with this"
+
     __repr__ = fs.repr_DynamicDirInfo
 
 
 @overload
-def plot_the_masks(segmentation_dir, *, image_names: List[str] = None, structure_names: List[str] = None): ...
+def plot_the_masks(
+    segmentation_dir,
+    *,
+    image_names: List[str] = None,
+    structure_names: List[str] = None,
+):
+    ...
 
 
 @overload
-def plot_the_masks(image_dir, atlas_dir, *, image_names: List[str] = None, structure_names: List[str] = None): ...
+def plot_the_masks(
+    image_dir,
+    atlas_dir,
+    out_path,
+    *,
+    image_names: List[str] = None,
+    structure_names: List[str] = None,
+):
+    ...
 
 
-def plot_the_masks(image_dir, atlas_dir=None, out_path=None, *, image_names: List[str] = None, structure_names: List[str] = None):
+def plot_the_masks(
+    image_dir,
+    atlas_dir=None,
+    out_path=None,
+    *,
+    image_names: List[str] = None,
+    structure_names: List[str] = None,
+):
     if atlas_dir is None:  # call signature 1
-        segm_dir = proto.coerce_to(proto.SegmentationInfoI, image_dir, SegmentationDirInfo.read_from)
+        segm_dir = proto.coerce_to(
+            proto.SegmentationInfoI, image_dir, SegmentationDirInfo.read_from
+        )
         image_dir = segm_dir.image_info
         atlas_dir = segm_dir.atlas_info
         plots_dir = MaskPlotsDir(segm_dir, use_subroot=True)
     else:  # call signature 2
-        image_dir = proto.coerce_to(proto.ImageInfoI, image_dir, ImageDirInfo.read_from)
-        atlas_dir = proto.coerce_to(proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from)
+        image_dir = proto.coerce_to(
+            proto.ImageInfoI, image_dir, ImageDirInfo.read_from
+        )
+        atlas_dir = proto.coerce_to(
+            proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from
+        )
         plots_dir = MaskPlotsDir(out_path)
+    flush_plot = DefaultHandlers.flush_plot
     plots_dir.root_dir.mkdir(parents=True, exist_ok=True)
     masks_dir_table = atlas_dir.masks()
     ont_table = atlas_dir.ontologies()
@@ -634,11 +663,15 @@ def plot_the_masks(image_dir, atlas_dir=None, out_path=None, *, image_names: Lis
     onts = dict()
     for im_name, s_name in iterators.product(image_names, structure_names):
         # TODO: remake into namedtuple or like, factor out main_loop closure, make error handling (if needed)
-        frame = __get_frame_from_image_name(im_name)  # this should probably become main_loop closure parameter
+        frame = __get_frame_from_image_name(
+            im_name
+        )  # this should probably become main_loop closure parameter
         ont: Ontology = onts.get(frame)
         if ont is None:
             ont: Ontology = onts.setdefault(frame, ont_table[frame])
-        structure = ont.find(lambda s: s.acronym == s_name or s.name == s_name)  # predicate should be configurable
+        structure = ont.find(
+            lambda s: s.acronym == s_name or s.name == s_name
+        )  # predicate should be configurable
 
         masks_dir = frames.setdefault(frame, masks_dir_table[frame])
         mask = masks_dir[structure]
@@ -649,9 +682,7 @@ def plot_the_masks(image_dir, atlas_dir=None, out_path=None, *, image_names: Lis
         ax.imshow(image, cmap="gray")
         mask = mask | np.flip(mask, axis=1)
         ax.imshow(np.where(mask, mask, np.nan), cmap="Set1", alpha=0.2)
-        # plot function should be a separate closure
-        fig.savefig(save_path, dpi=96)
-        plt.close(fig)
+        flush_plot(fig, save_path)
 
 
 # </editor-fold>
@@ -659,17 +690,27 @@ def plot_the_masks(image_dir, atlas_dir=None, out_path=None, *, image_names: Lis
 
 # <editor-fold description="data to series">
 
+
 class SerialImagesDir:
     def __init__(self, img_dir):
-        img_dir = proto.coerce_to(proto.ImageInfoI, img_dir, ImageDirInfo.read_from)
+        img_dir = proto.coerce_to(
+            proto.ImageInfoI, img_dir, ImageDirInfo.read_from
+        )
         self.path = img_dir.path / "serial_images"
-        self.index_file = fs.File(self.path / "index.csv", self._shape_file_read, self._shape_file_write)
+        self.index_file = fs.File(
+            self.path / "index.csv",
+            self._shape_file_read,
+            self._shape_file_write,
+        )
         self.table = io.NpyDir(self.path)
+
     __repr__ = fs.repr_DynamicDirInfo
 
     @staticmethod
     def _shape_file_write(path, value):
-        pd.DataFrame.to_csv(value, path, sep="\t", index=not isa(value.index, pd.RangeIndex))
+        pd.DataFrame.to_csv(
+            value, path, sep="\t", index=not isa(value.index, pd.RangeIndex)
+        )
 
     @staticmethod
     def _shape_file_read(path):
@@ -692,17 +733,23 @@ class NameTuple(NamedTuple):
 
 
 def image_dir_to_series(image_dir):
-    image_dir = proto.coerce_to(proto.ImageInfoI, image_dir, ImageDirInfo.read_from)
+    image_dir = proto.coerce_to(
+        proto.ImageInfoI, image_dir, ImageDirInfo.read_from
+    )
     image_dir_ser = SerialImagesDir(image_dir)
     image_dir_ser.path.mkdir(exist_ok=True)
     ci_in = image_dir.cropped_images()
     ci_out = image_dir_ser.table
     keys = [(NameTuple.parse(k), k) for k in image_dir.cropped_images().keys()]
     keygroups = iterators.collect_by(keys, lambda n: (n[0].animal, n[0].frame))
-    keygroups = {k: sorted(v, key=lambda n: n[0].hour) for k, v in keygroups.items()}
+    keygroups = {
+        k: sorted(v, key=lambda n: n[0].hour) for k, v in keygroups.items()
+    }
     shapes = []
     # TODO: split loop, make lambdas into configuration
-    get_shape = lambda g, sh: dict(animal=g[0], frame=g[1], im_width=sh[0], im_height=sh[1])
+    get_shape = lambda g, sh: dict(
+        animal=g[0], frame=g[1], im_width=sh[0], im_height=sh[1]
+    )
     for group, keys in keygroups.items():
         images = np.stack([ci_in[name] for _, name in keys], axis=0)
         shapes.append(get_shape(group, images.shape[1:]))
@@ -710,6 +757,81 @@ def image_dir_to_series(image_dir):
         ci_out["_".join(str(g) for g in group)] = images
     shapes = pd.DataFrame(shapes)
     image_dir_ser.index_file.write(shapes)
+
+
+@overload
+def plot_the_masks_image_dir_serial(
+    segmentation_dir,
+    *,
+    image_names: List[str] = None,
+    structure_names: List[str] = None,
+):
+    ...
+
+
+@overload
+def plot_the_masks_image_dir_serial(
+    image_dir,
+    atlas_dir,
+    out_path,
+    *,
+    image_names: List[str] = None,
+    structure_names: List[str] = None,
+):
+    ...
+
+
+def plot_the_masks_image_dir_serial(
+    image_dir,
+    atlas_dir=None,
+    out_path=None,
+    *,
+    image_names: List[str] = None,
+    structure_names: List[str] = None,
+):
+    if atlas_dir is None:  # call signature 1
+        segm_dir = proto.coerce_to(
+            proto.SegmentationInfoI, image_dir, SegmentationDirInfo.read_from
+        )
+        image_dir = segm_dir.image_info
+        atlas_dir = segm_dir.atlas_info
+        plots_dir = segm_dir.path / "flat_mask_plots"
+    else:  # call signature 2
+        image_dir = proto.coerce_to(
+            proto.ImageInfoI, image_dir, ImageDirInfo.read_from
+        )
+        atlas_dir = proto.coerce_to(
+            proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from
+        )
+        plots_dir = out_path / "flat_mask_plots"
+    flush_plot = DefaultHandlers.flush_plot
+    ser_im_dir = SerialImagesDir(image_dir)
+    images = ser_im_dir.table
+    onts = atlas_dir.ontologies()
+    n_onts = len(list(onts.keys()))
+    masks = atlas_dir.masks()
+    get_ont = lru_cache(n_onts)(onts.__getitem__)
+    get_masks_dir = lru_cache(n_onts)(masks.__getitem__)
+    for structure_name, image_name in iterators.product(structure_names, image_names):
+        ont_name = "f" + image_name.split("_")[1]  # to config
+        ont = get_ont(ont_name)
+        structure = ont.find(lambda s: s.name == structure_name or s.acronym == structure_name)
+        mask = get_masks_dir(ont_name)[structure]
+        img = images[image_name]
+        mask_f = mask.flatten()
+        masked = img[mask_f]
+
+        fig, ax = plt.subplots(1, 1, figsize=(10, 5))  # to config
+        ax.plot(masked, c="blue", alpha=0.2)  # to config
+        ax.set_title(f"{structure_name} at {image_name}")
+        flush_plot(fig, plots_dir / f"{image_name} {structure_name}")
+
+
+
+
+
+
+
 
 # </editor-fold>
 
@@ -720,4 +842,3 @@ def image_dir_to_series(image_dir):
 # </editor-fold>
 
 # </editor-fold>
-

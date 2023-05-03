@@ -48,23 +48,29 @@ FS_ROOT = Path(Path().resolve().root)
 
 
 def zip_files(zip_path, files: Iterable, relative_to: Path = FS_ROOT):
-    with ZipFile(zip_path, 'w') as z:
+    with ZipFile(zip_path, "w") as z:
         for f in files:
             z.write(f, Path(f).relative_to(relative_to))
 
 
 def zip_iterdir(zip_path) -> List[ZipInfo]:
-    with ZipFile(zip_path, 'r') as z:
+    with ZipFile(zip_path, "r") as z:
         return z.filelist
 
 
-def unzip_files(extract_to, zip_path, files: Opt[Iterable[Union[os.PathLike, ZipInfo]]] = None):
-    with ZipFile(zip_path, 'r') as z:
+def unzip_files(
+    extract_to,
+    zip_path,
+    files: Opt[Iterable[Union[os.PathLike, ZipInfo]]] = None,
+):
+    with ZipFile(zip_path, "r") as z:
         if files is None:
             z.extractall(extract_to)
             return
         for f in files:
             z.extract(f, extract_to)
+
+
 # </editor-fold>
 
 

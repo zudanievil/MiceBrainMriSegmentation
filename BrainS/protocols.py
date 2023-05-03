@@ -123,7 +123,13 @@ class SegmentationInfoI(InfoI):
         ...
 
     @classmethod
-    def new(cls, image_dir: os.PathLike, atlas_dir: os.PathLike, path: os.PathLike = None, name: str =None) -> "SegmentationDirInfo":
+    def new(
+        cls,
+        image_dir: os.PathLike,
+        atlas_dir: os.PathLike,
+        path: os.PathLike = None,
+        name: str = None,
+    ) -> "SegmentationDirInfo":
         """
         constructor with no filesystem-based validation.
         should coerce types of arguments

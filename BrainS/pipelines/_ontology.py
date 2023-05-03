@@ -93,7 +93,11 @@ class Ontology(NamedTuple):
     def from_xml(cls, es: Element) -> "Ontology":
         cons = flat_tree_lift(Structure.from_element)
         tag = Structure.NODE_TAG
-        tree = Tree.unflatten(cons(e) for e in XMLTree.flatten(es) if not isa(e, XMLFlatNode) or e.tag == tag)[0]
+        tree = Tree.unflatten(
+            cons(e)
+            for e in XMLTree.flatten(es)
+            if not isa(e, XMLFlatNode) or e.tag == tag
+        )[0]
         return cls(tree)
 
     @staticmethod
@@ -126,12 +130,14 @@ def write_ont(path, ont: Ontology):
 
 def read_mask(path) -> np.ndarray[bool]:
     mask = PIL.Image.open(path)
-    mask = np.array(mask.getdata(), dtype=np.uint8) \
-        .reshape((mask.size[1], mask.size[0]))
+    mask = np.array(mask.getdata(), dtype=np.uint8).reshape(
+        (mask.size[1], mask.size[0])
+    )
     return mask > 127
 
 
 def MaskDir(dir) -> FileTable[Structure, np.ndarray[bool]]:
     dir = Path(dir)
-    return FileTable(format=lambda s: dir / (s.filename + ".png"), _read=read_mask)
-
+    return FileTable(
+        format=lambda s: dir / (s.filename + ".png"), _read=read_mask
+    )

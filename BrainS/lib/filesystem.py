@@ -263,10 +263,14 @@ class FilterFormatter(NamedTuple):
         return str(path.relative_to(self.prefix))  # type: ignore
 
     def keys(self) -> Iterator[str]:
-        return (str(p.relative_to(self.prefix)) for p in iter_tree(self.prefix) if self.filter(p))
+        return (
+            str(p.relative_to(self.prefix))
+            for p in iter_tree(self.prefix)
+            if self.filter(p)
+        )
 
     def to_FileTable(
-            self, read: _read_t = not_implemented, write: _write_t = not_implemented
+        self, read: _read_t = not_implemented, write: _write_t = not_implemented
     ) -> FileTable[str, T]:
         return FileTable(self.format, self.unformat, self.keys, read, write)
 
@@ -275,6 +279,7 @@ class TableFormatter(NamedTuple):
     """
     just have a lookup table for paths
     """
+
     table: Dict[K, Path]
 
     def format(self, key: K) -> Path:
@@ -294,7 +299,7 @@ class TableFormatter(NamedTuple):
     __repr__ = object.__repr__  # because it will be a freaking huge output
 
     def to_FileTable(
-            self, read: _read_t = not_implemented, write: _write_t = not_implemented
+        self, read: _read_t = not_implemented, write: _write_t = not_implemented
     ) -> FileTable[str, T]:
         return FileTable(self.format, self.unformat, self.keys, read, write)
 
@@ -320,13 +325,17 @@ def repr_DynamicDirInfo(self):
     """
     cls = self.__class__
     cls_name = cls.__name__
-    parts = [f"\n[About {cls.__name__}]", ]
+    parts = [
+        f"\n[About {cls.__name__}]",
+    ]
     if cls.__doc__:
         parts.append(f"[Doc]: {cls.__doc__}")
     parts.append(f"[Init]: {ipyformat(cls.__init__)}")
     parts.append("[Attributes]:")
 
-    parts = ["\n".join(parts), ]
+    parts = [
+        "\n".join(parts),
+    ]
     obj_dict = self.__dict__
     for k, v in obj_dict.items():
         if k.startswith("_"):
