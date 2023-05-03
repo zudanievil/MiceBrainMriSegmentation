@@ -57,14 +57,17 @@ def explain_error(*_) -> str:
 
 
 class ListErrorLog:
-    __slots__ = "lst", "stream"
+    __slots__ = "lst", "stream", "max_length"
 
-    def __init__(self, stream: Opt[Any] = sys.stderr):
+    def __init__(self, stream: Opt[Any] = sys.stderr, max_length: int = 1000):
         self.lst = []
         self.stream = stream
+        self.max_length = max_length
 
     def __call__(self, e: Err):
         self.lst.append(e)
+        if len(self.lst) > self.max_length:
+            self.lst.pop(0)
         if self.stream is not None:
             self.stream.write(explain_error(*e.data))
 
