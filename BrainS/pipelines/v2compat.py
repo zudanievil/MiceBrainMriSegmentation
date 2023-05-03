@@ -456,18 +456,24 @@ def explain_error(_, k, meta_key, exc_type, exc_args, lineno):
 class collect_image_metadata(NamedTuple):
     pre_meta_reader: _pre_meta_reader_t
 
-    @classmethod
-    def _from_dict_interface_(cls, d: dict) -> "collect_image_metadata":
+    @staticmethod
+    def from_ImageDirInfo(_, config: Union[ImageDirInfo, fs.File[dict], dict]) -> "collect_image_metadata":
+        if isa(config, ImageDirInfo):
+            d = config.config().read()
+        elif isa(config, fs.File):
+            d = config.read()
+        else:
+            d = config
         r = _pre_meta_reader(d["metadata_keys"], d["file_name_fields"])
-        return cls(r)
+        return collect_image_metadata(r)
 
     @classmethod
     def get_main_loop(
         cls, image_dir: os.PathLike
     ) -> Tuple[Fn[[str], Opt[Err]], Iterable[str]]:
         image_dir = ImageDirInfo.read_from(image_dir)
-        image_dir_config = image_dir.config().read()
-        self = cls._from_dict_interface_(image_dir_config)
+        # image_dir_config = image_dir.config().read()
+        self = cls.from_ImageDirInfo(None, image_dir)
 
         metas = image_dir.metadata()
         keys = image_dir.keys()
@@ -488,6 +494,10 @@ class collect_image_metadata(NamedTuple):
             log(loop(k))
         return log
 
+
+config_utils.construct_from_disp.register(
+    (ImageDirInfo, collect_image_metadata),
+)(collect_image_metadata.from_ImageDirInfo)
 
 # </editor-fold>
 
@@ -539,7 +549,7 @@ class atlas_download:
     def slice_ids_table(atlas_dir: os.PathLike) -> Tuple[Path, pd.DataFrame]:
         from urllib.request import urlretrieve as download
         atlas_dir = proto.coerce_to(proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from)
-        save_path = atlas_dir.path() / "slice_ids.txt"
+        save_path = atlas_dir.path / "slice_ids.txt"
         config = atlas_dir.config().read()
         # perhaps, move to _from_dict_interface_. or maybe not
         kwargs = config["downloading_arguments"]
@@ -691,6 +701,7 @@ def image_dir_to_series(image_dir):
     keygroups = iterators.collect_by(keys, lambda n: (n[0].animal, n[0].frame))
     keygroups = {k: sorted(v, key=lambda n: n[0].hour) for k, v in keygroups.items()}
     shapes = []
+    # TODO: split loop, make lambdas into configuration
     get_shape = lambda g, sh: dict(animal=g[0], frame=g[1], im_width=sh[0], im_height=sh[1])
     for group, keys in keygroups.items():
         images = np.stack([ci_in[name] for _, name in keys], axis=0)

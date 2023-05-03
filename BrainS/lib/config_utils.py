@@ -6,17 +6,16 @@ Some useful configuration tools.
 from ..prelude import *
 from .functional import (
     ValDispatch,
-    Classifier,
 )
 
 
 __all__ = [
-    "from_dict_disp",
     "is_named_tuple",
     "NT_from_dict",
     "NT_replace",
-    "get_from_dict_constructor",
-    "_from_dict_interface_",
+    "get_constructor",
+    "construct_from",
+    "construct_from_disp",
 ]
 
 
@@ -45,36 +44,18 @@ def NT_from_dict(t: Type[NT], d: dict) -> NT:
     return t(**d1)
 
 
-_from_dict_t = Fn[[Type[T], dict], T]
+@ValDispatch.new((None, None))
+def construct_from_disp(from_to: Tuple[Type[T], Type[T1]], config: T) -> T1:
+    """derive value of one type from the value of another"""
+    return None
 
 
-def _from_dict_interface_(t: Type[T], d: dict) -> T:
-    """uses `t._from_dict_interface_(d)` classmethod"""
-    return t._from_dict_interface_(d)
+def construct_from(t1: Type[T1], x: T) -> T1:
+    """apply ``construct_from_disp`` """
+    return construct_from_disp((type(x), t1), x)
 
 
-@Classifier.new()
-def get_from_dict_constructor(t: Type[T]) -> _from_dict_t:
-    """get an appropriate ``form_dict(t: Type[T], d: dict) -> T`` function for a given type"""
-    if hasattr(t, "_from_dict_interface_"):
-        return _from_dict_interface_
+def get_constructor(src_t: Type[T], dst_t: Type[T1]) -> Opt[Fn[[T], T1]]:
+    """search ``construct_from_disp`` registry"""
+    return construct_from_disp.registry.get((src_t, dst_t))
 
-
-@get_from_dict_constructor.add_arm()
-def __named_tuple(t: type) -> _from_dict_t:
-    if is_named_tuple(t):
-        return NT_from_dict
-
-
-@ValDispatch.new(object)
-def from_dict_disp(t: Type[T], d: dict) -> T:
-    """functional interface for constructing objects from dictionary"""
-    raise NotImplementedError
-
-
-@get_from_dict_constructor.add_else
-def __multi_dispatch(*_) -> _from_dict_t:
-    return from_dict_disp
-
-
-# TODO: add `to dict` interface

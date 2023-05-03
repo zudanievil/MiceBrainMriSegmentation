@@ -18,6 +18,7 @@ __all__ = [
     "super_relative",
     "iter_tree",
     "iter_tree_braces",
+    "repr_DynamicDirInfo",
 ]
 
 _read_t = Fn[[PathLike], T]
@@ -355,3 +356,17 @@ This ^^^ may seem as a useless function, however, I find myself making
 classes like this quite often. It's nice to have some good support for 
 them at runtime, while keeping their code declarative.
 """
+
+#
+# class FnameFieldsFormatter(NamedTuple):
+#     prefix: Path
+#     template: List[str, Tuple[str, Type[T]]]
+#     cons: NamedTuple
+#
+#     @classmethod
+#     def new(cls, prefix, template: List[str, Tuple[str, Type[T]]]):
+#         nt = NamedTuple("generated", **{v[0]: v[1] for v in template if not isa(v, str)})
+#         return cls(Path(prefix), template, nt)
+#
+#     def format(self, k: tuple):
+#         self.prefix / ...

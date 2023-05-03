@@ -22,7 +22,7 @@ use python structural typing (duck typing)
 """
 
 from .lib.functional import Classifier, ValDispatch, Dispatch
-from .lib.filesystem import FileTable, File, FileFactory
+from .lib.filesystem import FileTable, File, FileFactory, repr_DynamicDirInfo
 from .lib.iterators import (
     Flattener,
     Unflattener,
@@ -32,11 +32,11 @@ from .lib.iterators import (
 )
 from .lib.io_utils import file
 from .lib.config_utils import (
-    from_dict_disp,
-    get_from_dict_constructor,
     NT_replace,
     NT_from_dict,
-    _from_dict_interface_,
+    construct_from,
+    construct_from_disp,
+    get_constructor,
 )
 from .prelude import repr_slots
 from .protocols import InfoI, ImageInfoI, AtlasInfoI, SegmentationInfoI
@@ -63,20 +63,21 @@ TYPE_CLASSES = [
 
 DISPATCHED = [
     file,
-    from_dict_disp,
-    get_from_dict_constructor,
+    construct_from_disp,
+    get_constructor,
+    construct_from,
     NT_replace,
     NT_from_dict,
     repr_slots,
     repr_flat,
+    repr_DynamicDirInfo,
 ]
 
 PROTOCOLS = [
-    _from_dict_interface_,
     InfoI,
     ImageInfoI,
     AtlasInfoI,
     SegmentationInfoI,
 ]
 
-ALL = TYPE_CLASSES + PROTOCOLS + DISPATCHED
+ALL = TYPE_CLASSES + PROTOCOLS + DISPATCHED  # type: ignore
