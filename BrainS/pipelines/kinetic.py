@@ -32,23 +32,27 @@ class aggregate_segmentation_results(NamedTuple):
             t = t.loc[self.structures]
             t.reset_index(inplace=True)
 
-        t.set_index(self.idx_cols + self.reduce_cols, in_place=True)
+        t.set_index(self.idx_cols + self.reduce_cols, inplace=True)
         if not self.reduce_cols:
             return t
 
         # group_by + sum
+        colnames = []
         accum = []
         for p in self.pval_thresholds:
+            cols = [f"mean (p <{p})", f"std (p <{p})", f"px (p <{p})"]
             mean_std_count = sum_mean_std(
-                t[f"mean (p <{p})"],
-                t[f"std (p <{p})"],
-                t[f"px (p <{p})"],
+                mean=t[cols[0]],
+                std=t[cols[1]],
+                count=t[cols[2]],
                 group_reduce=lambda series: series.groupby(
                     level=self.idx_cols
                 ).sum(min_count=1),
             )
             accum.extend(mean_std_count)
+            colnames.extend(cols)
         t = pd.concat(accum, axis=1)
+        t.columns = colnames
         return t
 
     def __call__(
