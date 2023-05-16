@@ -11,7 +11,7 @@ __all__ = [
     "Classifier",
     "partial",
     "reduce",
-    "lru_cache"
+    "lru_cache",
 ]
 
 

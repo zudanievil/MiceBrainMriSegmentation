@@ -58,3 +58,59 @@ def construct_from(t1: Type[T1], x: T) -> T1:
 def get_constructor(src_t: Type[T], dst_t: Type[T1]) -> Opt[Fn[[T], T1]]:
     """search ``construct_from_disp`` registry"""
     return construct_from_disp.registry.get((src_t, dst_t))
+
+
+class DocumentedNamespace:
+    """
+    similar to argparse.Namespace, but upgraded for interactive use.
+    stores type hints and documentation and pretty-prints them with __repr__()
+    ``
+    important = DocumentedNamespace(_name="important")
+    important.list = [1, 2, 3]
+    important._list_type = List[int]
+    important._list_doc = "be sure to keep this list available"
+    print(important) # try it!
+    ``
+    """
+
+    def __init__(self, _name: str = None, _doc: str = None, **kwargs):
+        self._name = _name
+        self._doc = _doc
+        self.__dict__.update(kwargs)
+
+    def __setattr__(self, k: str, v):
+        if k.startswith("_") and k not in ("_name", "_doc"):
+            k2 = k.removeprefix("_").removesuffix("_doc").removesuffix("_type")
+            if k2 not in self.__dict__:
+                raise KeyError(f"no attribute named {k2} found in __dict__")
+        self.__dict__[k] = v
+
+    def _get_doc_(self, attr_name):
+        return self.__dict__.get(f"_{attr_name}_doc")
+
+    def _get_type_(self, attr_name):
+        return self.__dict__.get(f"_{attr_name}_type")
+
+    def __repr__(self):
+        parts = [f"{self.__class__.__name__}"]
+        if self._name:
+            parts.append(f"[name]: '{self._name}'")
+        if self._doc:
+            parts.append(f"[doc]: {self._doc}")
+        parts.append("attributes:")
+        parts.append("=" * 10)
+        for k, v in self.__dict__.items():
+            if k.startswith("_"):
+                continue
+            parts.append(f".{k}:")
+            doc = self._get_doc_(k)
+            typ = self._get_type_(k)
+            if typ is not None and isa(typ, type):
+                typ = typ.__name__
+                parts.append(f"[type]: {typ}")
+            parts.append(f"[value]: {ipyformat(v)}")
+            if doc is not None:
+                parts.append(f"[doc]: {doc}")
+            parts.append("-" * 5)
+        parts.append("=" * 10)
+        return "\n".join(parts)

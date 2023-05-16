@@ -98,3 +98,33 @@ class RotRect(Coo2D):
     def non_rotated(self) -> "RotRect":
         w, h = self.wh_int()
         return self.new_non_rotated(h, w)
+
+
+def sum_mean_std(
+    mean: T,
+    std: T,
+    count: T,
+    group_reduce: Fn[[T], T] = np.sum,
+    sqrt: Fn[[T], T] = np.sqrt,
+) -> Tuple[T, T, T]:
+    """
+    sum up vectors of sample statistics (mean, std, count).
+    :param mean, std, count -- vector-like objects of size N
+    (elementwise operators +, -, * must be defined; +, * must be commutative)
+    :param group_reduce -- sums up the vector fully or by groups, returns a vector of new length
+    in the basic scenario, just sums up all values in a vector.
+    in a grouping scenario, should return vectors of size M.
+    :param sqrt: vectorized square root
+    :return: mean, std, count -- vectors of size M
+    """
+    # transform to additive parts and reduce
+    total = group_reduce(count * mean)
+    cmm = group_reduce(count * mean * mean)
+    diff_sq = group_reduce(count * std * std)
+    r_count = group_reduce(count)
+    # transform back
+    r_mean = total / r_count
+    r_std = sqrt((diff_sq + cmm) / r_count - (r_mean * r_mean))
+    return r_mean, r_std, r_count
+    # vectorization really messes up monoids,
+    # to the point where you can no longer recognize them >:{

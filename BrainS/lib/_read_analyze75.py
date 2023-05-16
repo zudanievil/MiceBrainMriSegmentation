@@ -79,20 +79,20 @@ def read_hdr(p: _Path) -> _Arr[HDR_NUMPY_DTYPE]:
 
 
 def read_analyze75(
-    p: _Path,
-    transpose: _Opt[_Tup[int, ...]] = (3, 1, 0, 4),
+    path,
+    transpose: _Opt[_Tup[int, ...]] = None,
     squeeze=True,
 ) -> _Tup[_Arr[_Any], _Arr[HDR_NUMPY_DTYPE]]:
     """
     Decode analyze 7.5 images into numpy array and a numpy record for a header.
-    :param p: path to image. suffixes `.img`, `.hdr` are
+    :param path: path to image. suffixes `.img`, `.hdr` are
     added using `pathlib.Path.with_suffix`.
     :param transpose: if not None, transpose.
-    by default, analyze7.5 has (w, h, c, ptr) axes order.
-    (3, 1, 0, 4) permutes this to (c, h, w, ptr).
+    by default, analyze7.5 has (x, y, z, time) axes order.
     :param squeeze: use `np.squeeze`
     :return: image, metadata
     """
+    p = _Path(path)
     meta = read_hdr(p.with_suffix(".hdr"))
     dtype = DATA_TYPE_CODES[int(meta["datatype"])]
     if type(dtype) == str:

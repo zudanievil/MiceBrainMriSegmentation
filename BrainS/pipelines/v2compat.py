@@ -1,5 +1,4 @@
 import shutil as sh
-from argparse import Namespace as NS
 import xml.etree.ElementTree as et
 from typing import overload
 import numpy as np
@@ -28,8 +27,9 @@ __all__ = [
 ]
 
 _E = PipelineErrors
-# _H = DefaultHandlers
-_soft_err_t = DefaultHandlers.soft_error_type
+_H = DefaultHandlers
+# _soft_err_t = _H._soft_error_type
+# _flush_plot_t = _H._flush_plot_type
 
 # <editor-fold desc="InfoI implementations">
 
@@ -438,7 +438,9 @@ def explain_error(_, k, meta_key, exc_type, exc_args, lineno):
     )
 
 
-class collect_image_metadata(NamedTuple):  # this is a good example of how final pipelines should look like
+class collect_image_metadata(
+    NamedTuple
+):  # this is a good example of how final pipelines should look like
     pre_meta_reader: _pre_meta_reader_t
 
     @staticmethod
@@ -474,9 +476,9 @@ class collect_image_metadata(NamedTuple):  # this is a good example of how final
         return main_loop, keys
 
     @classmethod
-    def main(cls, image_dir: os.PathLike, soft_err: _soft_err_t = None):
+    def main(cls, image_dir: os.PathLike, soft_err: _H._soft_error_type = None):
         loop, keys = cls.get_main_loop(image_dir)
-        soft_err = DefaultHandlers.soft_error if soft_err is None else soft_err
+        soft_err = _H.soft_error if soft_err is None else soft_err
         for k in keys:
             e = loop(k)
             if is_err(e):
@@ -500,18 +502,20 @@ def explain_error(_, k, exc_type, exc_args) -> str:
 
 
 def raw_images_to_npy(
-    image_dir: os.PathLike, dtype="<i4", shape=(256, 256), soft_err: _soft_err_t = None
+    image_dir: os.PathLike,
+    dtype="<i4",
+    shape=(256, 256),
+    soft_err: _H._soft_error_type = None,
 ):
     image_dir = ImageDirInfo.read_from(image_dir)
     raw = image_dir.raw_images(dtype, shape)
     imgs = image_dir.images()
-    soft_err = DefaultHandlers.soft_error if soft_err is None else soft_err
+    soft_err = _H.soft_error if soft_err is None else soft_err
     for k in raw.keys():
         try:
             imgs[k] = raw[k]
         except Exception as e:
             soft_err(Err((_E.RAW_IMAGES_TO_NUMPY, k, type(e), e.args)))
-
 
 
 # </editor-fold>
@@ -654,7 +658,7 @@ def plot_the_masks(
             proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from
         )
         plots_dir = MaskPlotsDir(out_path)
-    flush_plot = DefaultHandlers.flush_plot
+    flush_plot = _H.flush_plot
     plots_dir.root_dir.mkdir(parents=True, exist_ok=True)
     masks_dir_table = atlas_dir.masks()
     ont_table = atlas_dir.ontologies()
@@ -759,78 +763,141 @@ def image_dir_to_series(image_dir):
     image_dir_ser.index_file.write(shapes)
 
 
-@overload
-def plot_the_masks_image_dir_serial(
-    segmentation_dir,
-    *,
-    image_names: List[str] = None,
-    structure_names: List[str] = None,
-):
-    ...
+class _find_structure_clj(NamedTuple):
+    name: str
+
+    def __call__(self, s: Structure) -> bool:
+        return self.name == s.name or self.name == s.acronym
 
 
-@overload
-def plot_the_masks_image_dir_serial(
-    image_dir,
-    atlas_dir,
-    out_path,
-    *,
-    image_names: List[str] = None,
-    structure_names: List[str] = None,
-):
-    ...
+def _plot_the_masks_serial(xticks, masked, structure_name, image_name):
+    lines = masked.T
+    means = masked.mean(axis=0)
+    sds = masked.std(axis=0) / means
+
+    fig, ax = plt.subplots(1, 1, figsize=(10, 10))  # to config
+    ax.plot(
+        xticks,
+        lines,
+        c="blue",
+        alpha=0.05,
+    )  # to config
+    ax.plot([], [], c="blue", alpha=0.5, label="pixel values")
+    ax.fill_between(
+        xticks,
+        means - sds,
+        means + sds,
+        color="magenta",
+        alpha=0.8,
+        label="SD",
+    )
+    ax.plot(xticks, means, c="magenta", ls="--", lw=3, label="mean")
+    ax.set_title(f"{structure_name} at {image_name} (mean +/- SD)")
+    ax.set_xscale("log")
+    ax.set_ylim(0.3 * 1e6, 1.3 * 1e6)
+    plt.xticks(xticks, xticks, axes=ax)
+    plt.legend()
+    return fig
 
 
-def plot_the_masks_image_dir_serial(
-    image_dir,
-    atlas_dir=None,
-    out_path=None,
-    *,
-    image_names: List[str] = None,
-    structure_names: List[str] = None,
-):
-    if atlas_dir is None:  # call signature 1
-        segm_dir = proto.coerce_to(
-            proto.SegmentationInfoI, image_dir, SegmentationDirInfo.read_from
+def _ont_name_from_image_name(n: str) -> str:
+    return "f" + n.split("_")[1]
+
+
+class plot_serial_images(NamedTuple):
+    find_structure: Fn[[str], Fn[[Structure], bool]] = _find_structure_clj
+    plot = _plot_the_masks_serial
+    ont_name_from_image_name: Fn[[str], str] = _ont_name_from_image_name
+
+    @staticmethod
+    def _coerce_args(
+        image_dir,
+        atlas_dir,
+        out_path,
+    ) -> Tuple[proto.ImageInfoI, proto.AtlasInfoI, Path]:
+        if atlas_dir is None:  # s1
+            segm_dir = proto.coerce_to(
+                proto.SegmentationInfoI,
+                image_dir,
+                SegmentationDirInfo.read_from,
+            )
+            image_dir = segm_dir.image_info
+            atlas_dir = segm_dir.atlas_info
+            plots_dir = segm_dir.path / "flat_mask_plots"
+        else:  # s2
+            image_dir = proto.coerce_to(
+                proto.ImageInfoI, image_dir, ImageDirInfo.read_from
+            )
+            atlas_dir = proto.coerce_to(
+                proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from
+            )
+            plots_dir = out_path / "flat_mask_plots"
+        return image_dir, atlas_dir, plots_dir
+
+    def prep_main_loop(
+        self,
+        image_dir,
+        atlas_dir,
+        image_names,
+        structure_names,
+        xticks,
+        plots_dir,
+    ):
+        ser_im_dir = SerialImagesDir(image_dir)
+        images = ser_im_dir.table
+        onts = atlas_dir.ontologies()
+        n_onts = 19  # need atlas_dir.svgs()
+        masks = atlas_dir.masks()
+        get_ont = lru_cache(n_onts)(onts.__getitem__)
+        get_masks_dir = lru_cache(n_onts)(masks.__getitem__)
+        image_names = image_names or list(ser_im_dir.table.keys())
+        keys = iterators.product(structure_names, image_names)
+        get_ont_name = self.ont_name_from_image_name
+        plot = self.plot
+        find_structure = self.find_structure
+
+        def main_loop(structure_name: str, image_name: str):
+            ont_name = get_ont_name(image_name)
+            ont = get_ont(ont_name)
+            structure = ont.find(find_structure(structure_name))
+            mask = get_masks_dir(ont_name)[structure]
+            img = images[image_name]
+            mask_f = mask.flatten()
+            masked = img[mask_f]
+            fig = plot(xticks, masked, structure_name, image_name)
+            return fig, plots_dir / f"{structure_name} {image_name}"
+
+        return keys, main_loop
+
+    def __call__(
+        self,
+        image_dir,
+        atlas_dir=None,
+        out_path=None,
+        *,
+        image_names: List[str] = None,
+        structure_names: List[str] = None,
+        xticks=None,
+        flush_plot: _H._flush_plot_type = None,
+        soft_err: _H._soft_error_type = None,
+    ):
+        if xticks is None:  # xticks should be temporary
+            raise NotImplementedError("TODO: get xticks from folder")
+        image_dir, atlas_dir, plots_dir = self._coerce_args(
+            image_dir, atlas_dir, out_path
         )
-        image_dir = segm_dir.image_info
-        atlas_dir = segm_dir.atlas_info
-        plots_dir = segm_dir.path / "flat_mask_plots"
-    else:  # call signature 2
-        image_dir = proto.coerce_to(
-            proto.ImageInfoI, image_dir, ImageDirInfo.read_from
+        flush_plot = _H.flush_plot
+        soft_err = _H.soft_error
+        plots_dir.mkdir(exist_ok=True, parents=True)
+
+        keys, loop = self.prep_main_loop(
+            image_dir, atlas_dir, image_names, structure_names, xticks
         )
-        atlas_dir = proto.coerce_to(
-            proto.AtlasInfoI, atlas_dir, AtlasDirInfo.read_from
-        )
-        plots_dir = out_path / "flat_mask_plots"
-    flush_plot = DefaultHandlers.flush_plot
-    ser_im_dir = SerialImagesDir(image_dir)
-    images = ser_im_dir.table
-    onts = atlas_dir.ontologies()
-    n_onts = len(list(onts.keys()))
-    masks = atlas_dir.masks()
-    get_ont = lru_cache(n_onts)(onts.__getitem__)
-    get_masks_dir = lru_cache(n_onts)(masks.__getitem__)
-    for structure_name, image_name in iterators.product(structure_names, image_names):
-        ont_name = "f" + image_name.split("_")[1]  # to config
-        ont = get_ont(ont_name)
-        structure = ont.find(lambda s: s.name == structure_name or s.acronym == structure_name)
-        mask = get_masks_dir(ont_name)[structure]
-        img = images[image_name]
-        mask_f = mask.flatten()
-        masked = img[mask_f]
-
-        fig, ax = plt.subplots(1, 1, figsize=(10, 5))  # to config
-        ax.plot(masked, c="blue", alpha=0.2)  # to config
-        ax.set_title(f"{structure_name} at {image_name}")
-        flush_plot(fig, plots_dir / f"{image_name} {structure_name}")
-
-
-
-
-
-
+        for k in keys:
+            res = loop(*k)
+            if is_err(res):
+                soft_err(res)
+            flush_plot(res[0], res[1])
 
 
 # </editor-fold>

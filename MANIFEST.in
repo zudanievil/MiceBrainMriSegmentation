@@ -1,5 +1,5 @@
 include BrainS/*
-include BrainS/configs/*.toml
+include resources/*
 
 exclude v2/*
 exclude scripts/*
