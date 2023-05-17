@@ -3,7 +3,7 @@ name = "BrainSegmentation"
 version = "3.0.0"
 description = "Custom tool for MRI scan segmentation"
 readme = "README.md"
-# license = "LICENSE"
+license = "LICENSE"
 requires-python = ">=3.9"
 dependencies = [
     "toml", "pyyaml",
@@ -17,7 +17,7 @@ authors = [
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",

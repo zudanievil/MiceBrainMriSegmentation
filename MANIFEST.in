@@ -4,4 +4,5 @@ include resources/*
 exclude v2/*
 exclude scripts/*
 exclude tests/*
-exclude */local_*
+exclude local_*/*
+exclude local_*
